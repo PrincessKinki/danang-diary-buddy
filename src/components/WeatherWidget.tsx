@@ -18,27 +18,33 @@ const conditionBg = {
   'partly-cloudy': 'from-secondary/10 to-primary/10'
 };
 
-// Mock weather data for Da Nang
-const mockWeather: WeatherData = {
+// Mock weather data for Da Nang with rain times
+const mockWeather: WeatherData & { rainPeriods?: { start: string; end: string }[] } = {
   temperature: 28,
-  condition: 'sunny',
-  humidity: 75,
+  condition: 'rainy',
+  humidity: 85,
   high: 32,
   low: 24,
+  rainPeriods: [
+    { start: '14:00', end: '16:00' },
+    { start: '19:00', end: '21:00' }
+  ],
   hourlyForecast: [
-    { hour: '現在', temperature: 28, condition: 'sunny' },
-    { hour: '14:00', temperature: 30, condition: 'sunny' },
-    { hour: '15:00', temperature: 31, condition: 'partly-cloudy' },
-    { hour: '16:00', temperature: 30, condition: 'partly-cloudy' },
-    { hour: '17:00', temperature: 28, condition: 'cloudy' },
+    { hour: '現在', temperature: 28, condition: 'cloudy' },
+    { hour: '14:00', temperature: 27, condition: 'rainy' },
+    { hour: '15:00', temperature: 26, condition: 'rainy' },
+    { hour: '16:00', temperature: 27, condition: 'cloudy' },
+    { hour: '17:00', temperature: 28, condition: 'partly-cloudy' },
     { hour: '18:00', temperature: 26, condition: 'cloudy' },
-    { hour: '19:00', temperature: 25, condition: 'partly-cloudy' },
+    { hour: '19:00', temperature: 25, condition: 'rainy' },
   ]
 };
 
 export const WeatherWidget = () => {
-  const [weather] = useState<WeatherData>(mockWeather);
+  const [weather] = useState<WeatherData & { rainPeriods?: { start: string; end: string }[] }>(mockWeather);
   const Icon = conditionIcons[weather.condition];
+  const hasRain = weather.condition === 'rainy' || weather.condition === 'stormy' || 
+    weather.hourlyForecast.some(h => h.condition === 'rainy' || h.condition === 'stormy');
 
   return (
     <div className={`bg-gradient-to-br ${conditionBg[weather.condition]} rounded-2xl p-5 shadow-card overflow-hidden`}>
@@ -62,6 +68,23 @@ export const WeatherWidget = () => {
           </div>
         </div>
       </div>
+      
+      {/* Rain Period Alert */}
+      {hasRain && weather.rainPeriods && weather.rainPeriods.length > 0 && (
+        <div className="bg-primary/10 border border-primary/20 rounded-xl p-3 mb-4">
+          <div className="flex items-center gap-2 text-primary">
+            <CloudRain className="w-4 h-4" />
+            <span className="text-sm font-medium">預計降雨時間</span>
+          </div>
+          <div className="flex flex-wrap gap-2 mt-2">
+            {weather.rainPeriods.map((period, idx) => (
+              <span key={idx} className="text-xs bg-primary/20 text-primary px-2 py-1 rounded-full">
+                {period.start} - {period.end}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
       
       <div className="flex gap-3 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">
         {weather.hourlyForecast.map((hour, idx) => {

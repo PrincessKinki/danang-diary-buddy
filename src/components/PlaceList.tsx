@@ -170,15 +170,21 @@ export const PlaceList = ({ places, onAdd, onUpdate, onDelete }: PlaceListProps)
                 >
                   <Heart className={`w-4 h-4 ${place.isFavorite ? 'fill-accent text-accent' : ''}`} />
                 </Button>
-                {place.googleMapsUrl && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => window.open(place.googleMapsUrl, '_blank')}
-                  >
-                    <ExternalLink className="w-4 h-4" />
-                  </Button>
-                )}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                    if (place.googleMapsUrl) {
+                      window.open(place.googleMapsUrl, '_blank');
+                    } else {
+                      const query = encodeURIComponent(place.name + ' Da Nang Vietnam');
+                      window.open(`https://www.google.com/maps/search/${query}`, '_blank');
+                    }
+                  }}
+                  title="在 Google Maps 開啟"
+                >
+                  <MapPin className="w-4 h-4 text-primary" />
+                </Button>
                 <Button
                   variant="ghost"
                   size="icon"
