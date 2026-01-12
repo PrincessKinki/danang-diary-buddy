@@ -1,0 +1,299 @@
+import { useState } from 'react';
+import { Plus, MapPin, Heart, Trash2, Check, ExternalLink, Search, X, Star } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import type { Place, PlaceCategory } from '@/types/travel';
+
+const categoryLabels: Record<PlaceCategory, string> = {
+  food: '🍜 美食',
+  attraction: '🏛️ 景點',
+  shopping: '🛍️ 購物',
+  cafe: '☕ 咖啡店',
+  nightlife: '🌙 夜生活',
+  nature: '🌴 自然',
+  culture: '🎭 文化',
+  other: '📍 其他'
+};
+
+const categoryColors: Record<PlaceCategory, string> = {
+  food: 'bg-secondary/20 text-secondary-foreground',
+  attraction: 'bg-primary/20 text-primary',
+  shopping: 'bg-accent text-accent-foreground',
+  cafe: 'bg-warning/20 text-warning-foreground',
+  nightlife: 'bg-chart-4/20 text-chart-4',
+  nature: 'bg-success/20 text-success',
+  culture: 'bg-chart-3/20 text-chart-3',
+  other: 'bg-muted text-muted-foreground'
+};
+
+interface PlaceListProps {
+  places: Place[];
+  onAdd: (place: Omit<Place, 'id' | 'createdAt'>) => void;
+  onUpdate: (id: string, updates: Partial<Place>) => void;
+  onDelete: (id: string) => void;
+}
+
+export const PlaceList = ({ places, onAdd, onUpdate, onDelete }: PlaceListProps) => {
+  const [isAddOpen, setIsAddOpen] = useState(false);
+  const [newPlace, setNewPlace] = useState({
+    name: '',
+    category: 'attraction' as PlaceCategory,
+    googleMapsUrl: '',
+    scheduledDate: '',
+    scheduledTime: '',
+    notes: ''
+  });
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filter, setFilter] = useState<PlaceCategory | 'all'>('all');
+  const [showCompleted, setShowCompleted] = useState(true);
+
+  const filteredPlaces = places
+    .filter(p => filter === 'all' || p.category === filter)
+    .filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()))
+    .filter(p => showCompleted || !p.completed)
+    .sort((a, b) => {
+      // Sort by date, then by favorite status
+      if (a.scheduledDate && b.scheduledDate) {
+        return a.scheduledDate.localeCompare(b.scheduledDate);
+      }
+      if (a.scheduledDate) return -1;
+      if (b.scheduledDate) return 1;
+      return Number(b.isFavorite) - Number(a.isFavorite);
+    });
+
+  const handleAdd = () => {
+    if (!newPlace.name) return;
+    onAdd({
+      ...newPlace,
+      completed: false,
+      isFavorite: false
+    });
+    setNewPlace({
+      name: '',
+      category: 'attraction',
+      googleMapsUrl: '',
+      scheduledDate: '',
+      scheduledTime: '',
+      notes: ''
+    });
+    setIsAddOpen(false);
+  };
+
+  const openGoogleMapsSearch = () => {
+    const query = encodeURIComponent(newPlace.name + ' Da Nang Vietnam');
+    window.open(`https://www.google.com/maps/search/${query}`, '_blank');
+  };
+
+  const handleComplete = (place: Place) => {
+    onUpdate(place.id, { completed: !place.completed });
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Search and Filter */}
+      <div className="flex gap-2">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            placeholder="搜尋地點..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        <Select value={filter} onValueChange={(v) => setFilter(v as PlaceCategory | 'all')}>
+          <SelectTrigger className="w-32">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">全部</SelectItem>
+            {Object.entries(categoryLabels).map(([key, label]) => (
+              <SelectItem key={key} value={key}>{label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Place List */}
+      <div className="space-y-3">
+        {filteredPlaces.map((place) => (
+          <div
+            key={place.id}
+            className={`bg-card rounded-xl p-4 shadow-card transition-all duration-300 ${
+              place.completed ? 'opacity-60' : ''
+            }`}
+          >
+            <div className="flex items-start gap-3">
+              <button
+                onClick={() => handleComplete(place)}
+                className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 transition-all ${
+                  place.completed 
+                    ? 'bg-success border-success' 
+                    : 'border-muted-foreground hover:border-primary'
+                }`}
+              >
+                {place.completed && <Check className="w-4 h-4 text-success-foreground" />}
+              </button>
+              
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className={`font-semibold text-foreground ${place.completed ? 'line-through' : ''}`}>
+                    {place.name}
+                  </h3>
+                  {place.isFavorite && <Star className="w-4 h-4 text-secondary fill-secondary" />}
+                </div>
+                
+                <div className="flex items-center gap-2 mt-1 flex-wrap">
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${categoryColors[place.category]}`}>
+                    {categoryLabels[place.category]}
+                  </span>
+                  {place.scheduledDate && (
+                    <span className="text-xs text-muted-foreground">
+                      {new Date(place.scheduledDate).toLocaleDateString('zh-TW')}
+                      {place.scheduledTime && ` ${place.scheduledTime}`}
+                    </span>
+                  )}
+                </div>
+                
+                {place.notes && (
+                  <p className="text-sm text-muted-foreground mt-1 line-clamp-1">{place.notes}</p>
+                )}
+              </div>
+              
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => onUpdate(place.id, { isFavorite: !place.isFavorite })}
+                >
+                  <Heart className={`w-4 h-4 ${place.isFavorite ? 'fill-accent text-accent' : ''}`} />
+                </Button>
+                {place.googleMapsUrl && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => window.open(place.googleMapsUrl, '_blank')}
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                  </Button>
+                )}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => onDelete(place.id)}
+                  className="text-destructive hover:text-destructive"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          </div>
+        ))}
+        
+        {filteredPlaces.length === 0 && (
+          <div className="text-center py-8 text-muted-foreground">
+            <MapPin className="w-12 h-12 mx-auto mb-2 opacity-50" />
+            <p>還沒有地點，新增一個吧！</p>
+          </div>
+        )}
+      </div>
+
+      {/* Add Button */}
+      <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+        <DialogTrigger asChild>
+          <Button className="w-full bg-gradient-tropical hover:opacity-90">
+            <Plus className="w-4 h-4 mr-2" />
+            新增地點
+          </Button>
+        </DialogTrigger>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>新增地點</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium mb-1.5 block">地點名稱</label>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="輸入地點名稱..."
+                  value={newPlace.name}
+                  onChange={(e) => setNewPlace({ ...newPlace, name: e.target.value })}
+                  className="flex-1"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={openGoogleMapsSearch}
+                  disabled={!newPlace.name}
+                >
+                  <Search className="w-4 h-4 mr-1" />
+                  搜尋
+                </Button>
+              </div>
+            </div>
+            
+            <div>
+              <label className="text-sm font-medium mb-1.5 block">分類</label>
+              <Select 
+                value={newPlace.category} 
+                onValueChange={(v) => setNewPlace({ ...newPlace, category: v as PlaceCategory })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(categoryLabels).map(([key, label]) => (
+                    <SelectItem key={key} value={key}>{label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div>
+              <label className="text-sm font-medium mb-1.5 block">Google Maps 連結 (選填)</label>
+              <Input
+                placeholder="貼上 Google Maps 連結..."
+                value={newPlace.googleMapsUrl}
+                onChange={(e) => setNewPlace({ ...newPlace, googleMapsUrl: e.target.value })}
+              />
+            </div>
+            
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-sm font-medium mb-1.5 block">日期 (選填)</label>
+                <Input
+                  type="date"
+                  value={newPlace.scheduledDate}
+                  onChange={(e) => setNewPlace({ ...newPlace, scheduledDate: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1.5 block">時間 (選填)</label>
+                <Input
+                  type="time"
+                  value={newPlace.scheduledTime}
+                  onChange={(e) => setNewPlace({ ...newPlace, scheduledTime: e.target.value })}
+                />
+              </div>
+            </div>
+            
+            <div>
+              <label className="text-sm font-medium mb-1.5 block">備註 (選填)</label>
+              <Input
+                placeholder="添加備註..."
+                value={newPlace.notes}
+                onChange={(e) => setNewPlace({ ...newPlace, notes: e.target.value })}
+              />
+            </div>
+            
+            <Button onClick={handleAdd} className="w-full" disabled={!newPlace.name}>
+              新增地點
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+};
