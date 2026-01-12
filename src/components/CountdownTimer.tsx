@@ -59,21 +59,15 @@ export const CountdownTimer = ({ targetDate, label }: CountdownTimerProps) => {
         <span className="text-primary-foreground font-semibold">{label}</span>
       </div>
       
-      {isExpired ? (
-        <div className="text-center py-2">
-          <span className="text-xl font-bold text-primary-foreground">旅程進行中！🎉</span>
-        </div>
-      ) : (
-        <div className="flex items-center justify-center gap-2">
-          <TimeUnit value={timeLeft.days} label="日" />
-          <span className="text-2xl font-bold text-primary-foreground/60">:</span>
-          <TimeUnit value={timeLeft.hours} label="時" />
-          <span className="text-2xl font-bold text-primary-foreground/60">:</span>
-          <TimeUnit value={timeLeft.minutes} label="分" />
-          <span className="text-2xl font-bold text-primary-foreground/60">:</span>
-          <TimeUnit value={timeLeft.seconds} label="秒" />
-        </div>
-      )}
+      <div className="flex items-center justify-center gap-2">
+        <TimeUnit value={timeLeft.days} label="日" />
+        <span className="text-2xl font-bold text-primary-foreground/60">:</span>
+        <TimeUnit value={timeLeft.hours} label="時" />
+        <span className="text-2xl font-bold text-primary-foreground/60">:</span>
+        <TimeUnit value={timeLeft.minutes} label="分" />
+        <span className="text-2xl font-bold text-primary-foreground/60">:</span>
+        <TimeUnit value={timeLeft.seconds} label="秒" />
+      </div>
     </div>
   );
 };
