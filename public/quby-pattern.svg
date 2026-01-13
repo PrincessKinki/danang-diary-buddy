@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 120 120">
+  <defs>
+    <style>
+      .quby-outline { fill: none; stroke: rgba(255,255,255,0.06); stroke-width: 1.5; }
+    </style>
+  </defs>
+  <!-- Quby face outline pattern -->
+  <g transform="translate(60,60)">
+    <!-- Head -->
+    <ellipse class="quby-outline" cx="0" cy="0" rx="25" ry="22"/>
+    <!-- Left ear -->
+    <ellipse class="quby-outline" cx="-18" cy="-18" rx="8" ry="10" transform="rotate(-20)"/>
+    <!-- Right ear -->
+    <ellipse class="quby-outline" cx="18" cy="-18" rx="8" ry="10" transform="rotate(20)"/>
+    <!-- Left eye -->
+    <circle class="quby-outline" cx="-8" cy="-3" r="4"/>
+    <!-- Right eye -->
+    <circle class="quby-outline" cx="8" cy="-3" r="4"/>
+    <!-- Nose -->
+    <ellipse class="quby-outline" cx="0" cy="5" rx="3" ry="2"/>
+    <!-- Mouth -->
+    <path class="quby-outline" d="M-6,10 Q0,15 6,10"/>
+    <!-- Cheeks -->
+    <ellipse class="quby-outline" cx="-15" cy="5" rx="4" ry="2" opacity="0.5"/>
+    <ellipse class="quby-outline" cx="15" cy="5" rx="4" ry="2" opacity="0.5"/>
+  </g>
+</svg>
