@@ -1,10 +1,11 @@
-import { useState } from 'react';
-import { Plus, MapPin, Heart, Trash2, Check, ExternalLink, Search, X, Star } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Plus, MapPin, Heart, Trash2, Check, ExternalLink, Search, X, Star, Navigation } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { Place, PlaceCategory } from '@/types/travel';
+import { useDebounce } from '@/hooks/useDebounce';
 
 const categoryLabels: Record<PlaceCategory, string> = {
   food: '🍜 美食',
@@ -48,6 +49,10 @@ export const PlaceList = ({ places, onAdd, onUpdate, onDelete }: PlaceListProps)
   const [searchQuery, setSearchQuery] = useState('');
   const [filter, setFilter] = useState<PlaceCategory | 'all'>('all');
   const [showCompleted, setShowCompleted] = useState(true);
+  
+  // Google Maps search state
+  const [showMapSearch, setShowMapSearch] = useState(false);
+  const debouncedPlaceName = useDebounce(newPlace.name, 500);
 
   const filteredPlaces = places
     .filter(p => filter === 'all' || p.category === filter)
@@ -81,13 +86,28 @@ export const PlaceList = ({ places, onAdd, onUpdate, onDelete }: PlaceListProps)
     setIsAddOpen(false);
   };
 
-  const openGoogleMapsSearch = () => {
-    const query = encodeURIComponent(newPlace.name + ' Da Nang Vietnam');
-    window.open(`https://www.google.com/maps/search/${query}`, '_blank');
+  // Auto-show map search when typing place name
+  useEffect(() => {
+    if (debouncedPlaceName.length >= 2) {
+      setShowMapSearch(true);
+    }
+  }, [debouncedPlaceName]);
+
+  const getGoogleMapsEmbedUrl = () => {
+    if (!debouncedPlaceName) return '';
+    const query = encodeURIComponent(debouncedPlaceName + ' Da Nang Vietnam');
+    return `https://www.google.com/maps/embed/v1/search?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8&q=${query}`;
   };
 
   const handleComplete = (place: Place) => {
     onUpdate(place.id, { completed: !place.completed });
+  };
+
+  // Calculate mock distance from accommodation (for demo)
+  const getDistanceFromAccommodation = (placeName: string) => {
+    // Mock distances based on place name hash
+    const hash = placeName.split('').reduce((a, b) => a + b.charCodeAt(0), 0);
+    return ((hash % 50) / 10 + 0.5).toFixed(1);
   };
 
   return (
@@ -148,6 +168,10 @@ export const PlaceList = ({ places, onAdd, onUpdate, onDelete }: PlaceListProps)
                 <div className="flex items-center gap-2 mt-1 flex-wrap">
                   <span className={`text-xs px-2 py-0.5 rounded-full ${categoryColors[place.category]}`}>
                     {categoryLabels[place.category]}
+                  </span>
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary flex items-center gap-1">
+                    <Navigation className="w-3 h-3" />
+                    {getDistanceFromAccommodation(place.name)} km
                   </span>
                   {place.scheduledDate && (
                     <span className="text-xs text-muted-foreground">
@@ -218,27 +242,44 @@ export const PlaceList = ({ places, onAdd, onUpdate, onDelete }: PlaceListProps)
           <DialogHeader>
             <DialogTitle>新增地點</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-4 max-h-[70vh] overflow-y-auto">
             <div>
               <label className="text-sm font-medium mb-1.5 block">地點名稱</label>
-              <div className="flex gap-2">
-                <Input
-                  placeholder="輸入地點名稱..."
-                  value={newPlace.name}
-                  onChange={(e) => setNewPlace({ ...newPlace, name: e.target.value })}
-                  className="flex-1"
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={openGoogleMapsSearch}
-                  disabled={!newPlace.name}
-                >
-                  <Search className="w-4 h-4 mr-1" />
-                  搜尋
-                </Button>
-              </div>
+              <Input
+                placeholder="輸入地點名稱搜尋..."
+                value={newPlace.name}
+                onChange={(e) => setNewPlace({ ...newPlace, name: e.target.value })}
+              />
             </div>
+            
+            {/* Google Maps Embed Search */}
+            {showMapSearch && debouncedPlaceName.length >= 2 && (
+              <div className="rounded-xl overflow-hidden border border-border">
+                <div className="bg-muted px-3 py-2 flex items-center justify-between">
+                  <span className="text-sm font-medium text-foreground flex items-center gap-2">
+                    <MapPin className="w-4 h-4 text-primary" />
+                    Google Maps 搜尋結果
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowMapSearch(false)}
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
+                <iframe
+                  src={getGoogleMapsEmbedUrl()}
+                  className="w-full h-48 border-0"
+                  allowFullScreen
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                />
+                <div className="bg-muted/50 px-3 py-2">
+                  <p className="text-xs text-muted-foreground">確認位置後填入下方資料並新增</p>
+                </div>
+              </div>
+            )}
             
             <div>
               <label className="text-sm font-medium mb-1.5 block">分類</label>
