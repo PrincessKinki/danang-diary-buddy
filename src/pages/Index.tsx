@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Settings, Edit2 } from 'lucide-react';
 import { QubyMascot } from '@/components/QubyMascot';
-import { CountdownTimer } from '@/components/CountdownTimer';
 import { WeatherWidget } from '@/components/WeatherWidget';
 import { AccommodationCard } from '@/components/AccommodationCard';
 import { Button } from '@/components/ui/button';
@@ -99,12 +98,6 @@ const Index = () => {
 
       {/* Content */}
       <div className="px-4 -mt-4 space-y-4 relative z-10">
-        {/* Countdown */}
-        <CountdownTimer 
-          targetDate={tripInfo.startDate} 
-          label="距離出發還有"
-        />
-
         {/* Weather */}
         <WeatherWidget />
 
