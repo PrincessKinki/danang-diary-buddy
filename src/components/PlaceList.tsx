@@ -275,8 +275,24 @@ export const PlaceList = ({ places, onAdd, onUpdate, onDelete }: PlaceListProps)
                   loading="lazy"
                   referrerPolicy="no-referrer-when-downgrade"
                 />
-                <div className="bg-muted/50 px-3 py-2">
-                  <p className="text-xs text-muted-foreground">確認位置後填入下方資料並新增</p>
+                <div className="bg-muted/50 px-3 py-2 flex items-center justify-between">
+                  <p className="text-xs text-muted-foreground">確認此位置正確嗎？</p>
+                  <Button
+                    size="sm"
+                    variant="default"
+                    className="bg-success hover:bg-success/90 text-success-foreground"
+                    onClick={() => {
+                      const query = encodeURIComponent(debouncedPlaceName + ' Da Nang Vietnam');
+                      setNewPlace({
+                        ...newPlace,
+                        googleMapsUrl: `https://www.google.com/maps/search/${query}`
+                      });
+                      setShowMapSearch(false);
+                    }}
+                  >
+                    <Check className="w-4 h-4 mr-1" />
+                    確認地點
+                  </Button>
                 </div>
               </div>
             )}
