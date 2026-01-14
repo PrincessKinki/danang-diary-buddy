@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Sun, Cloud, CloudRain, CloudLightning, CloudSun, Droplets, Umbrella } from 'lucide-react';
+import { Sun, Cloud, CloudRain, CloudLightning, CloudSun, Droplets, Umbrella, ExternalLink } from 'lucide-react';
 import type { WeatherData } from '@/types/travel';
 
 const conditionIcons = {
@@ -16,6 +16,42 @@ const conditionBg = {
   'rainy': 'from-primary/20 to-muted',
   'stormy': 'from-secondary/30 to-muted',
   'partly-cloudy': 'from-secondary/10 to-primary/10'
+};
+
+// AccuWeather location codes for different destinations
+const accuWeatherLocations: Record<string, { key: string; name: string }> = {
+  'da nang': { key: '353412', name: 'Da Nang' },
+  'vietnam': { key: '353412', name: 'Da Nang' },
+  'hanoi': { key: '353412', name: 'Hanoi' },
+  'ho chi minh': { key: '353981', name: 'Ho Chi Minh' },
+  'japan': { key: '226396', name: 'Tokyo' },
+  'tokyo': { key: '226396', name: 'Tokyo' },
+  'korea': { key: '226081', name: 'Seoul' },
+  'seoul': { key: '226081', name: 'Seoul' },
+  'thailand': { key: '318849', name: 'Bangkok' },
+  'bangkok': { key: '318849', name: 'Bangkok' },
+  'taiwan': { key: '315078', name: 'Taipei' },
+  'taipei': { key: '315078', name: 'Taipei' },
+  'hong kong': { key: '1123655', name: 'Hong Kong' },
+  'singapore': { key: '300597', name: 'Singapore' },
+};
+
+const getAccuWeatherUrl = (destination: string): { url: string; locationName: string } => {
+  const lowerDest = destination.toLowerCase();
+  for (const [key, location] of Object.entries(accuWeatherLocations)) {
+    if (lowerDest.includes(key)) {
+      return {
+        url: `https://www.accuweather.com/en/search-locations?query=${encodeURIComponent(location.name)}`,
+        locationName: location.name
+      };
+    }
+  }
+  // Default search
+  const searchTerm = destination.split(',')[0].trim();
+  return {
+    url: `https://www.accuweather.com/en/search-locations?query=${encodeURIComponent(searchTerm)}`,
+    locationName: searchTerm
+  };
 };
 
 // Mock weather data for different locations
@@ -96,9 +132,11 @@ interface WeatherWidgetProps {
 
 export const WeatherWidget = ({ destination = 'Da Nang, Vietnam' }: WeatherWidgetProps) => {
   const [weather, setWeather] = useState(getWeatherForLocation(destination));
+  const [accuWeatherInfo, setAccuWeatherInfo] = useState(getAccuWeatherUrl(destination));
   
   useEffect(() => {
     setWeather(getWeatherForLocation(destination));
+    setAccuWeatherInfo(getAccuWeatherUrl(destination));
   }, [destination]);
   
   const Icon = conditionIcons[weather.condition];
@@ -109,7 +147,18 @@ export const WeatherWidget = ({ destination = 'Da Nang, Vietnam' }: WeatherWidge
     <div className={`bg-gradient-to-br ${conditionBg[weather.condition]} rounded-2xl p-5 shadow-card overflow-hidden`}>
       <div className="flex items-start justify-between mb-4">
         <div>
-          <h3 className="text-sm font-medium text-muted-foreground">{weather.location}天氣</h3>
+          <div className="flex items-center gap-2">
+            <h3 className="text-sm font-medium text-muted-foreground">{weather.location}天氣</h3>
+            <a 
+              href={accuWeatherInfo.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary hover:text-primary/80 transition-colors"
+              title="在 AccuWeather 查看詳細天氣"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+            </a>
+          </div>
           <div className="flex items-baseline gap-1 mt-1">
             <span className="text-5xl font-bold text-foreground">{weather.temperature}</span>
             <span className="text-2xl text-muted-foreground">°C</span>
@@ -167,6 +216,19 @@ export const WeatherWidget = ({ destination = 'Da Nang, Vietnam' }: WeatherWidge
             </div>
           );
         })}
+      </div>
+      
+      {/* AccuWeather Link */}
+      <div className="mt-3 pt-3 border-t border-border/30">
+        <a 
+          href={accuWeatherInfo.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center justify-center gap-2 text-xs text-muted-foreground hover:text-primary transition-colors"
+        >
+          <span>在 AccuWeather 查看 {accuWeatherInfo.locationName} 詳細天氣</span>
+          <ExternalLink className="w-3 h-3" />
+        </a>
       </div>
     </div>
   );

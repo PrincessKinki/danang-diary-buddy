@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Plus, Trash2, RefreshCw, ArrowRightLeft } from 'lucide-react';
+import { Plus, Trash2, ArrowRightLeft, DollarSign } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import type { Expense, ExpenseCategory } from '@/types/travel';
-import { getCurrencySettings, saveCurrencySettings, type CurrencySettings } from '@/lib/storage';
+import { getCurrencySettings, getTripInfo, type CurrencySettings } from '@/lib/storage';
 
 const categoryLabels: Record<ExpenseCategory, string> = {
   food: '🍜 美食',
@@ -24,13 +24,49 @@ const currencies = [
   { code: 'TWD', name: '新台幣', symbol: 'NT$' },
   { code: 'JPY', name: '日元', symbol: '¥' },
   { code: 'KRW', name: '韓元', symbol: '₩' },
+  { code: 'THB', name: '泰銖', symbol: '฿' },
 ];
+
+// Destination to currency mapping
+const destinationCurrencyMap: Record<string, string> = {
+  'vietnam': 'VND',
+  'da nang': 'VND',
+  'hanoi': 'VND',
+  'ho chi minh': 'VND',
+  'japan': 'JPY',
+  'tokyo': 'JPY',
+  'korea': 'KRW',
+  'seoul': 'KRW',
+  'thailand': 'THB',
+  'bangkok': 'THB',
+  'taiwan': 'TWD',
+  'taipei': 'TWD',
+  'hong kong': 'HKD',
+  'china': 'CNY',
+  'singapore': 'USD',
+  'malaysia': 'USD',
+};
+
+const getCurrencyForDestination = (destination: string): string => {
+  const lowerDest = destination.toLowerCase();
+  for (const [key, currency] of Object.entries(destinationCurrencyMap)) {
+    if (lowerDest.includes(key)) {
+      return currency;
+    }
+  }
+  return 'USD';
+};
 
 // Approximate exchange rates (base: HKD)
 const exchangeRates: Record<string, Record<string, number>> = {
-  HKD: { VND: 3050, USD: 0.128, CNY: 0.92, TWD: 4.1, JPY: 19.2, KRW: 170, HKD: 1 },
-  VND: { HKD: 0.00033, USD: 0.000042, CNY: 0.0003, TWD: 0.0013, JPY: 0.0063, KRW: 0.056, VND: 1 },
-  USD: { HKD: 7.82, VND: 24000, CNY: 7.2, TWD: 32, JPY: 150, KRW: 1330, USD: 1 },
+  HKD: { VND: 3050, USD: 0.128, CNY: 0.92, TWD: 4.1, JPY: 19.2, KRW: 170, HKD: 1, THB: 4.6 },
+  VND: { HKD: 0.00033, USD: 0.000042, CNY: 0.0003, TWD: 0.0013, JPY: 0.0063, KRW: 0.056, VND: 1, THB: 0.0015 },
+  USD: { HKD: 7.82, VND: 24000, CNY: 7.2, TWD: 32, JPY: 150, KRW: 1330, USD: 1, THB: 36 },
+  JPY: { HKD: 0.052, VND: 160, CNY: 0.048, TWD: 0.21, JPY: 1, KRW: 8.8, USD: 0.0067, THB: 0.24 },
+  THB: { HKD: 0.22, VND: 670, CNY: 0.2, TWD: 0.89, JPY: 4.2, KRW: 37, USD: 0.028, THB: 1 },
+  KRW: { HKD: 0.0059, VND: 18, CNY: 0.0054, TWD: 0.024, JPY: 0.113, KRW: 1, USD: 0.00075, THB: 0.027 },
+  TWD: { HKD: 0.24, VND: 750, CNY: 0.22, TWD: 1, JPY: 4.7, KRW: 42, USD: 0.031, THB: 1.13 },
+  CNY: { HKD: 1.09, VND: 3320, CNY: 1, TWD: 4.5, JPY: 21, KRW: 185, USD: 0.14, THB: 5 },
 };
 
 interface ExpenseTrackerProps {
@@ -42,15 +78,25 @@ interface ExpenseTrackerProps {
 export const ExpenseTracker = ({ expenses, onAdd, onDelete }: ExpenseTrackerProps) => {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [currencySettings, setCurrencySettings] = useState<CurrencySettings>(getCurrencySettings());
+  const [destinationCurrency, setDestinationCurrency] = useState('VND');
+  const [showBubble, setShowBubble] = useState(false);
   const [newExpense, setNewExpense] = useState({
     description: '',
     amount: '',
-    currency: currencySettings.baseCurrency,
+    currency: 'VND',
     category: 'food' as ExpenseCategory
   });
   const [converterAmount, setConverterAmount] = useState('');
   const [converterFrom, setConverterFrom] = useState('HKD');
   const [converterTo, setConverterTo] = useState('VND');
+
+  useEffect(() => {
+    const tripInfo = getTripInfo();
+    const detectedCurrency = getCurrencyForDestination(tripInfo.destination);
+    setDestinationCurrency(detectedCurrency);
+    setNewExpense(prev => ({ ...prev, currency: detectedCurrency }));
+    setConverterTo(detectedCurrency);
+  }, []);
 
   const convert = (amount: number, from: string, to: string) => {
     if (from === to) return amount;
@@ -70,7 +116,7 @@ export const ExpenseTracker = ({ expenses, onAdd, onDelete }: ExpenseTrackerProp
 
   const formatCurrency = (amount: number, currency: string) => {
     const curr = currencies.find(c => c.code === currency);
-    const formatted = currency === 'VND' 
+    const formatted = currency === 'VND' || currency === 'KRW' || currency === 'JPY'
       ? Math.round(amount).toLocaleString()
       : amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     return `${curr?.symbol || ''}${formatted}`;
@@ -89,10 +135,14 @@ export const ExpenseTracker = ({ expenses, onAdd, onDelete }: ExpenseTrackerProp
     setNewExpense({
       description: '',
       amount: '',
-      currency: currencySettings.baseCurrency,
+      currency: destinationCurrency,
       category: 'food'
     });
     setIsAddOpen(false);
+    
+    // Show bubble animation
+    setShowBubble(true);
+    setTimeout(() => setShowBubble(false), 1500);
   };
 
   const totalInBase = expenses.reduce((sum, exp) => {
@@ -104,8 +154,39 @@ export const ExpenseTracker = ({ expenses, onAdd, onDelete }: ExpenseTrackerProp
     setConverterTo(converterFrom);
   };
 
+  // Group expenses by date
+  const expensesByDate = expenses.reduce((groups, expense) => {
+    const date = new Date(expense.date).toLocaleDateString('zh-TW');
+    if (!groups[date]) {
+      groups[date] = [];
+    }
+    groups[date].push(expense);
+    return groups;
+  }, {} as Record<string, Expense[]>);
+
+  // Calculate daily totals
+  const getDailyTotal = (dayExpenses: Expense[]) => {
+    return dayExpenses.reduce((sum, exp) => {
+      return sum + convert(exp.amount, exp.currency, currencySettings.baseCurrency);
+    }, 0);
+  };
+
+  // Sort dates in descending order (newest first)
+  const sortedDates = Object.keys(expensesByDate).sort((a, b) => 
+    new Date(b).getTime() - new Date(a).getTime()
+  );
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 relative">
+      {/* Success Bubble Animation */}
+      {showBubble && (
+        <div className="fixed inset-0 pointer-events-none z-50 flex items-center justify-center">
+          <div className="animate-bounce bg-success text-success-foreground rounded-full p-6 shadow-lg">
+            <DollarSign className="w-12 h-12" />
+          </div>
+        </div>
+      )}
+
       {/* Currency Converter */}
       <div className="bg-gradient-tropical rounded-2xl p-5 shadow-glow">
         <h3 className="text-primary-foreground font-semibold mb-3">💱 匯率轉換</h3>
@@ -113,6 +194,7 @@ export const ExpenseTracker = ({ expenses, onAdd, onDelete }: ExpenseTrackerProp
           <div className="flex-1">
             <Input
               type="number"
+              inputMode="decimal"
               placeholder="金額"
               value={converterAmount}
               onChange={(e) => setConverterAmount(e.target.value)}
@@ -171,34 +253,47 @@ export const ExpenseTracker = ({ expenses, onAdd, onDelete }: ExpenseTrackerProp
         </div>
       </div>
 
-      {/* Expense List */}
-      <div className="space-y-2">
-        {expenses.map((expense) => (
-          <div key={expense.id} className="bg-card rounded-xl p-4 shadow-card">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm">{categoryLabels[expense.category].split(' ')[0]}</span>
-                  <span className="font-medium text-foreground">{expense.description}</span>
-                </div>
-                <span className="text-xs text-muted-foreground">
-                  {new Date(expense.date).toLocaleDateString('zh-TW')}
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="font-semibold text-foreground">
-                  {formatCurrency(expense.amount, expense.currency)}
-                </span>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => onDelete(expense.id)}
-                  className="text-destructive hover:text-destructive"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
-              </div>
+      {/* Expense List - Grouped by Date */}
+      <div className="space-y-4">
+        {sortedDates.map((date) => (
+          <div key={date} className="space-y-2">
+            {/* Date Header with Daily Total */}
+            <div className="flex items-center justify-between px-2">
+              <span className="text-sm font-medium text-muted-foreground">{date}</span>
+              <span className="text-sm font-semibold text-primary">
+                小計: {formatCurrency(getDailyTotal(expensesByDate[date]), currencySettings.baseCurrency)}
+              </span>
             </div>
+            
+            {/* Day's Expenses */}
+            {expensesByDate[date].map((expense) => (
+              <div key={expense.id} className="bg-card rounded-xl p-4 shadow-card">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm">{categoryLabels[expense.category].split(' ')[0]}</span>
+                      <span className="font-medium text-foreground">{expense.description}</span>
+                    </div>
+                    <span className="text-xs text-muted-foreground">
+                      {new Date(expense.date).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-foreground">
+                      {formatCurrency(expense.amount, expense.currency)}
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => onDelete(expense.id)}
+                      className="text-destructive hover:text-destructive"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         ))}
         
@@ -232,16 +327,8 @@ export const ExpenseTracker = ({ expenses, onAdd, onDelete }: ExpenseTrackerProp
               />
             </div>
             
+            {/* Currency and Amount - Swapped positions */}
             <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-sm font-medium mb-1.5 block">金額</label>
-                <Input
-                  type="number"
-                  placeholder="0"
-                  value={newExpense.amount}
-                  onChange={(e) => setNewExpense({ ...newExpense, amount: e.target.value })}
-                />
-              </div>
               <div>
                 <label className="text-sm font-medium mb-1.5 block">貨幣</label>
                 <Select 
@@ -258,23 +345,38 @@ export const ExpenseTracker = ({ expenses, onAdd, onDelete }: ExpenseTrackerProp
                   </SelectContent>
                 </Select>
               </div>
+              <div>
+                <label className="text-sm font-medium mb-1.5 block">金額</label>
+                <Input
+                  type="number"
+                  inputMode="decimal"
+                  placeholder="0"
+                  value={newExpense.amount}
+                  onChange={(e) => setNewExpense({ ...newExpense, amount: e.target.value })}
+                />
+              </div>
             </div>
             
+            {/* Category as tap buttons instead of dropdown */}
             <div>
-              <label className="text-sm font-medium mb-1.5 block">分類</label>
-              <Select 
-                value={newExpense.category} 
-                onValueChange={(v) => setNewExpense({ ...newExpense, category: v as ExpenseCategory })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.entries(categoryLabels).map(([key, label]) => (
-                    <SelectItem key={key} value={key}>{label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <label className="text-sm font-medium mb-2 block">分類</label>
+              <div className="grid grid-cols-3 gap-2">
+                {Object.entries(categoryLabels).map(([key, label]) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setNewExpense({ ...newExpense, category: key as ExpenseCategory })}
+                    className={`p-3 rounded-xl text-center transition-all ${
+                      newExpense.category === key 
+                        ? 'bg-primary text-primary-foreground shadow-md scale-105' 
+                        : 'bg-muted hover:bg-muted/80'
+                    }`}
+                  >
+                    <span className="text-xl block">{label.split(' ')[0]}</span>
+                    <span className="text-xs">{label.split(' ')[1]}</span>
+                  </button>
+                ))}
+              </div>
             </div>
             
             <Button onClick={handleAdd} className="w-full" disabled={!newExpense.description || !newExpense.amount}>
