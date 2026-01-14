@@ -125,10 +125,6 @@ const Index = () => {
           </div>
         </div>
         
-        {/* Quby Mascot */}
-        <div className="absolute top-4 right-4">
-          <QubyMascot size="sm" message="歡迎來到峴港！🇻🇳" />
-        </div>
       </div>
 
       {/* Content */}
@@ -141,7 +137,7 @@ const Index = () => {
           <div className="bg-card rounded-xl p-4 shadow-card text-center">
             <span className="text-2xl">🗓️</span>
             <p className="text-lg font-bold text-foreground mt-1">
-              {Math.ceil((new Date(tripInfo.endDate).getTime() - new Date(tripInfo.startDate).getTime()) / (1000 * 60 * 60 * 24))}
+              {Math.ceil((new Date(tripInfo.endDate).getTime() - new Date(tripInfo.startDate).getTime()) / (1000 * 60 * 60 * 24)) + 1}
             </p>
             <p className="text-xs text-muted-foreground">天數</p>
           </div>

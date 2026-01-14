@@ -32,8 +32,8 @@ const phrases: Record<string, Record<string, string>> = {
 };
 
 export const TranslationPage = () => {
-  const [sourceLang, setSourceLang] = useState('vi');
-  const [targetLang, setTargetLang] = useState('zh-TW');
+  const [sourceLang, setSourceLang] = useState('zh-TW');
+  const [targetLang, setTargetLang] = useState('vi');
   const [sourceText, setSourceText] = useState('');
   const [translatedText, setTranslatedText] = useState('');
   const [isListening, setIsListening] = useState(false);
