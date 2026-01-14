@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, MapPin, Heart, Trash2, Check, ExternalLink, Search, X, Star, Navigation } from 'lucide-react';
+import { Plus, MapPin, Heart, Trash2, Check, ExternalLink, Search, X, Star, Navigation, Edit2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -38,6 +38,7 @@ interface PlaceListProps {
 
 export const PlaceList = ({ places, onAdd, onUpdate, onDelete }: PlaceListProps) => {
   const [isAddOpen, setIsAddOpen] = useState(false);
+  const [editingPlace, setEditingPlace] = useState<Place | null>(null);
   const [newPlace, setNewPlace] = useState({
     name: '',
     category: 'attraction' as PlaceCategory,
@@ -86,6 +87,19 @@ export const PlaceList = ({ places, onAdd, onUpdate, onDelete }: PlaceListProps)
     setIsAddOpen(false);
   };
 
+  const handleEditSave = () => {
+    if (!editingPlace) return;
+    onUpdate(editingPlace.id, {
+      name: editingPlace.name,
+      category: editingPlace.category,
+      googleMapsUrl: editingPlace.googleMapsUrl,
+      scheduledDate: editingPlace.scheduledDate,
+      scheduledTime: editingPlace.scheduledTime,
+      notes: editingPlace.notes
+    });
+    setEditingPlace(null);
+  };
+
   // Auto-show map search when typing place name
   useEffect(() => {
     if (debouncedPlaceName.length >= 2) {
@@ -93,9 +107,9 @@ export const PlaceList = ({ places, onAdd, onUpdate, onDelete }: PlaceListProps)
     }
   }, [debouncedPlaceName]);
 
-  const getGoogleMapsEmbedUrl = () => {
-    if (!debouncedPlaceName) return '';
-    const query = encodeURIComponent(debouncedPlaceName + ' Da Nang Vietnam');
+  const getGoogleMapsEmbedUrl = (placeName: string) => {
+    if (!placeName) return '';
+    const query = encodeURIComponent(placeName + ' Da Nang Vietnam');
     return `https://www.google.com/maps/embed/v1/search?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8&q=${query}`;
   };
 
@@ -190,6 +204,14 @@ export const PlaceList = ({ places, onAdd, onUpdate, onDelete }: PlaceListProps)
                 <Button
                   variant="ghost"
                   size="icon"
+                  onClick={() => setEditingPlace(place)}
+                  title="編輯地點"
+                >
+                  <Edit2 className="w-4 h-4 text-muted-foreground" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
                   onClick={() => onUpdate(place.id, { isFavorite: !place.isFavorite })}
                 >
                   <Heart className={`w-4 h-4 ${place.isFavorite ? 'fill-accent text-accent' : ''}`} />
@@ -230,6 +252,82 @@ export const PlaceList = ({ places, onAdd, onUpdate, onDelete }: PlaceListProps)
         )}
       </div>
 
+      {/* Edit Place Dialog */}
+      <Dialog open={!!editingPlace} onOpenChange={(open) => !open && setEditingPlace(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>編輯地點</DialogTitle>
+          </DialogHeader>
+          {editingPlace && (
+            <div className="space-y-4 max-h-[70vh] overflow-y-auto">
+              <div>
+                <label className="text-sm font-medium mb-1.5 block">地點名稱</label>
+                <Input
+                  value={editingPlace.name}
+                  onChange={(e) => setEditingPlace({ ...editingPlace, name: e.target.value })}
+                />
+              </div>
+              
+              <div>
+                <label className="text-sm font-medium mb-1.5 block">分類</label>
+                <Select 
+                  value={editingPlace.category} 
+                  onValueChange={(v) => setEditingPlace({ ...editingPlace, category: v as PlaceCategory })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(categoryLabels).map(([key, label]) => (
+                      <SelectItem key={key} value={key}>{label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div>
+                <label className="text-sm font-medium mb-1.5 block">Google Maps 連結</label>
+                <Input
+                  placeholder="貼上 Google Maps 連結..."
+                  value={editingPlace.googleMapsUrl}
+                  onChange={(e) => setEditingPlace({ ...editingPlace, googleMapsUrl: e.target.value })}
+                />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-sm font-medium mb-1.5 block">日期</label>
+                  <Input
+                    type="date"
+                    value={editingPlace.scheduledDate || ''}
+                    onChange={(e) => setEditingPlace({ ...editingPlace, scheduledDate: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-1.5 block">時間</label>
+                  <Input
+                    type="time"
+                    value={editingPlace.scheduledTime || ''}
+                    onChange={(e) => setEditingPlace({ ...editingPlace, scheduledTime: e.target.value })}
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <label className="text-sm font-medium mb-1.5 block">備註</label>
+                <Input
+                  placeholder="添加備註..."
+                  value={editingPlace.notes || ''}
+                  onChange={(e) => setEditingPlace({ ...editingPlace, notes: e.target.value })}
+                />
+              </div>
+              
+              <Button onClick={handleEditSave} className="w-full">儲存變更</Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
       {/* Add Button */}
       <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
         <DialogTrigger asChild>
@@ -269,7 +367,7 @@ export const PlaceList = ({ places, onAdd, onUpdate, onDelete }: PlaceListProps)
                   </Button>
                 </div>
                 <iframe
-                  src={getGoogleMapsEmbedUrl()}
+                  src={getGoogleMapsEmbedUrl(debouncedPlaceName)}
                   className="w-full h-48 border-0"
                   allowFullScreen
                   loading="lazy"
