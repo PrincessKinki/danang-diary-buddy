@@ -150,10 +150,40 @@ export const TranslationPage = () => {
         </div>
       </div>
 
-      {/* Dual view translation panels */}
+      {/* Dual view translation panels - Vietnamese on top, Chinese on bottom */}
       <div className="flex flex-col">
-        {/* Source panel */}
-        <div className="bg-card p-4 border-b border-border">
+        {/* Target panel (Vietnamese - output) */}
+        <div className="bg-muted/30 p-4 min-h-[160px] border-b border-border">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-medium text-muted-foreground">
+              {targetLanguage?.flag} {targetLanguage?.name}
+            </span>
+            <div className="flex items-center gap-1">
+              <Button 
+                variant="ghost" 
+                size="icon"
+                onClick={() => handleSpeak(translatedText, targetLang)}
+                disabled={!translatedText}
+              >
+                <Volume2 className="w-4 h-4" />
+              </Button>
+              <Button 
+                variant="ghost" 
+                size="icon"
+                onClick={() => handleCopy(translatedText)}
+                disabled={!translatedText}
+              >
+                {copied ? <Check className="w-4 h-4 text-success" /> : <Copy className="w-4 h-4" />}
+              </Button>
+            </div>
+          </div>
+          <p className="text-lg text-foreground whitespace-pre-wrap">
+            {translatedText || 'Kết quả dịch sẽ hiển thị ở đây...'}
+          </p>
+        </div>
+
+        {/* Source panel (Chinese - input at bottom for easy typing) */}
+        <div className="bg-card p-4">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-medium text-muted-foreground">
               {sourceLanguage?.flag} {sourceLanguage?.name}
@@ -187,36 +217,6 @@ export const TranslationPage = () => {
               翻譯
             </Button>
           </div>
-        </div>
-
-        {/* Target panel */}
-        <div className="bg-muted/30 p-4 min-h-[200px]">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium text-muted-foreground">
-              {targetLanguage?.flag} {targetLanguage?.name}
-            </span>
-            <div className="flex items-center gap-1">
-              <Button 
-                variant="ghost" 
-                size="icon"
-                onClick={() => handleSpeak(translatedText, targetLang)}
-                disabled={!translatedText}
-              >
-                <Volume2 className="w-4 h-4" />
-              </Button>
-              <Button 
-                variant="ghost" 
-                size="icon"
-                onClick={() => handleCopy(translatedText)}
-                disabled={!translatedText}
-              >
-                {copied ? <Check className="w-4 h-4 text-success" /> : <Copy className="w-4 h-4" />}
-              </Button>
-            </div>
-          </div>
-          <p className="text-lg text-foreground whitespace-pre-wrap">
-            {translatedText || '翻譯結果將顯示在這裡...'}
-          </p>
         </div>
       </div>
 
