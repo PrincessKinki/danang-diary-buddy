@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Sun, Cloud, CloudRain, CloudLightning, CloudSun, Droplets, Umbrella, ExternalLink } from 'lucide-react';
+import { Sun, Cloud, CloudRain, CloudLightning, CloudSun, Droplets, Umbrella, ExternalLink, Globe, ChevronDown } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Input } from '@/components/ui/input';
 import type { WeatherData } from '@/types/travel';
 
 const conditionIcons = {
@@ -18,39 +21,22 @@ const conditionBg = {
   'partly-cloudy': 'from-secondary/10 to-primary/10'
 };
 
-// AccuWeather location codes for different destinations
-const accuWeatherLocations: Record<string, { key: string; name: string }> = {
-  'da nang': { key: '353412', name: 'Da Nang' },
-  'vietnam': { key: '353412', name: 'Da Nang' },
-  'hanoi': { key: '353412', name: 'Hanoi' },
-  'ho chi minh': { key: '353981', name: 'Ho Chi Minh' },
-  'japan': { key: '226396', name: 'Tokyo' },
-  'tokyo': { key: '226396', name: 'Tokyo' },
-  'korea': { key: '226081', name: 'Seoul' },
-  'seoul': { key: '226081', name: 'Seoul' },
-  'thailand': { key: '318849', name: 'Bangkok' },
-  'bangkok': { key: '318849', name: 'Bangkok' },
-  'taiwan': { key: '315078', name: 'Taipei' },
-  'taipei': { key: '315078', name: 'Taipei' },
-  'hong kong': { key: '1123655', name: 'Hong Kong' },
-  'singapore': { key: '300597', name: 'Singapore' },
-};
+// Popular cities organized by country/region
+const popularLocations = [
+  { country: '越南', cities: ['Da Nang', 'Hanoi', 'Ho Chi Minh City', 'Nha Trang', 'Hoi An'] },
+  { country: '日本', cities: ['Tokyo', 'Osaka', 'Kyoto', 'Hokkaido', 'Okinawa'] },
+  { country: '韓國', cities: ['Seoul', 'Busan', 'Jeju Island', 'Incheon'] },
+  { country: '泰國', cities: ['Bangkok', 'Phuket', 'Chiang Mai', 'Pattaya'] },
+  { country: '台灣', cities: ['Taipei', 'Kaohsiung', 'Taichung', 'Tainan'] },
+  { country: '其他', cities: ['Hong Kong', 'Singapore', 'Kuala Lumpur', 'Manila', 'Bali'] }
+];
 
-const getAccuWeatherUrl = (destination: string): { url: string; locationName: string } => {
-  const lowerDest = destination.toLowerCase();
-  for (const [key, location] of Object.entries(accuWeatherLocations)) {
-    if (lowerDest.includes(key)) {
-      return {
-        url: `https://www.accuweather.com/en/search-locations?query=${encodeURIComponent(location.name)}`,
-        locationName: location.name
-      };
-    }
-  }
-  // Default search
-  const searchTerm = destination.split(',')[0].trim();
+// Get weather search URL for different providers
+const getWeatherSearchUrl = (city: string): { url: string; provider: string } => {
+  const encoded = encodeURIComponent(city);
   return {
-    url: `https://www.accuweather.com/en/search-locations?query=${encodeURIComponent(searchTerm)}`,
-    locationName: searchTerm
+    url: `https://www.google.com/search?q=${encoded}+weather`,
+    provider: 'Google'
   };
 };
 
@@ -58,9 +44,9 @@ const getAccuWeatherUrl = (destination: string): { url: string; locationName: st
 const getWeatherForLocation = (destination: string): WeatherData & { rainPeriods?: { start: string; end: string; chance: number }[], location: string } => {
   const lowerDest = destination.toLowerCase();
   
-  if (lowerDest.includes('da nang') || lowerDest.includes('vietnam')) {
+  if (lowerDest.includes('da nang') || lowerDest.includes('vietnam') || lowerDest.includes('hanoi') || lowerDest.includes('ho chi minh')) {
     return {
-      location: '峴港',
+      location: destination.split(',')[0] || '越南',
       temperature: 28,
       condition: 'rainy',
       humidity: 85,
@@ -82,9 +68,9 @@ const getWeatherForLocation = (destination: string): WeatherData & { rainPeriods
     };
   }
   
-  if (lowerDest.includes('tokyo') || lowerDest.includes('japan')) {
+  if (lowerDest.includes('tokyo') || lowerDest.includes('japan') || lowerDest.includes('osaka') || lowerDest.includes('kyoto')) {
     return {
-      location: '東京',
+      location: destination.split(',')[0] || '日本',
       temperature: 22,
       condition: 'partly-cloudy',
       humidity: 65,
@@ -101,6 +87,50 @@ const getWeatherForLocation = (destination: string): WeatherData & { rainPeriods
         { hour: '17:00', temperature: 23, condition: 'cloudy' },
         { hour: '18:00', temperature: 21, condition: 'rainy' },
         { hour: '19:00', temperature: 20, condition: 'rainy' },
+      ]
+    };
+  }
+
+  if (lowerDest.includes('seoul') || lowerDest.includes('korea') || lowerDest.includes('busan')) {
+    return {
+      location: destination.split(',')[0] || '韓國',
+      temperature: 18,
+      condition: 'cloudy',
+      humidity: 60,
+      high: 22,
+      low: 14,
+      rainPeriods: [],
+      hourlyForecast: [
+        { hour: '現在', temperature: 18, condition: 'cloudy' },
+        { hour: '14:00', temperature: 20, condition: 'partly-cloudy' },
+        { hour: '15:00', temperature: 22, condition: 'sunny' },
+        { hour: '16:00', temperature: 21, condition: 'sunny' },
+        { hour: '17:00', temperature: 19, condition: 'partly-cloudy' },
+        { hour: '18:00', temperature: 17, condition: 'cloudy' },
+        { hour: '19:00', temperature: 15, condition: 'cloudy' },
+      ]
+    };
+  }
+
+  if (lowerDest.includes('bangkok') || lowerDest.includes('thailand') || lowerDest.includes('phuket')) {
+    return {
+      location: destination.split(',')[0] || '泰國',
+      temperature: 33,
+      condition: 'sunny',
+      humidity: 75,
+      high: 35,
+      low: 28,
+      rainPeriods: [
+        { start: '16:00', end: '17:00', chance: 30 }
+      ],
+      hourlyForecast: [
+        { hour: '現在', temperature: 33, condition: 'sunny' },
+        { hour: '14:00', temperature: 34, condition: 'sunny' },
+        { hour: '15:00', temperature: 35, condition: 'partly-cloudy' },
+        { hour: '16:00', temperature: 33, condition: 'cloudy' },
+        { hour: '17:00', temperature: 31, condition: 'partly-cloudy' },
+        { hour: '18:00', temperature: 30, condition: 'sunny' },
+        { hour: '19:00', temperature: 29, condition: 'sunny' },
       ]
     };
   }
@@ -131,34 +161,84 @@ interface WeatherWidgetProps {
 }
 
 export const WeatherWidget = ({ destination = 'Da Nang, Vietnam' }: WeatherWidgetProps) => {
+  const [selectedCity, setSelectedCity] = useState(destination);
   const [weather, setWeather] = useState(getWeatherForLocation(destination));
-  const [accuWeatherInfo, setAccuWeatherInfo] = useState(getAccuWeatherUrl(destination));
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isOpen, setIsOpen] = useState(false);
   
   useEffect(() => {
+    setSelectedCity(destination);
     setWeather(getWeatherForLocation(destination));
-    setAccuWeatherInfo(getAccuWeatherUrl(destination));
   }, [destination]);
+
+  const handleSelectCity = (city: string) => {
+    setSelectedCity(city);
+    setWeather(getWeatherForLocation(city));
+    setIsOpen(false);
+    setSearchQuery('');
+  };
+
+  const weatherInfo = getWeatherSearchUrl(selectedCity);
   
   const Icon = conditionIcons[weather.condition];
   const hasRain = weather.condition === 'rainy' || weather.condition === 'stormy' || 
     weather.hourlyForecast.some(h => h.condition === 'rainy' || h.condition === 'stormy');
 
+  // Filter cities based on search
+  const filteredLocations = searchQuery 
+    ? popularLocations.map(loc => ({
+        ...loc,
+        cities: loc.cities.filter(city => 
+          city.toLowerCase().includes(searchQuery.toLowerCase())
+        )
+      })).filter(loc => loc.cities.length > 0)
+    : popularLocations;
+
   return (
     <div className={`bg-gradient-to-br ${conditionBg[weather.condition]} rounded-2xl p-5 shadow-card overflow-hidden`}>
       <div className="flex items-start justify-between mb-4">
         <div>
-          <div className="flex items-center gap-2">
-            <h3 className="text-sm font-medium text-muted-foreground">{weather.location}天氣</h3>
-            <a 
-              href={accuWeatherInfo.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-primary hover:text-primary/80 transition-colors"
-              title="在 AccuWeather 查看詳細天氣"
-            >
-              <ExternalLink className="w-3.5 h-3.5" />
-            </a>
-          </div>
+          <Popover open={isOpen} onOpenChange={setIsOpen}>
+            <PopoverTrigger asChild>
+              <button className="flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+                <Globe className="w-3.5 h-3.5" />
+                {weather.location}天氣
+                <ChevronDown className="w-3.5 h-3.5" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-72 p-0" align="start">
+              <div className="p-3 border-b border-border">
+                <Input
+                  placeholder="搜尋城市..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="h-8"
+                />
+              </div>
+              <div className="max-h-64 overflow-y-auto p-2">
+                {filteredLocations.map((loc) => (
+                  <div key={loc.country} className="mb-2">
+                    <p className="text-xs font-medium text-muted-foreground px-2 py-1">{loc.country}</p>
+                    <div className="flex flex-wrap gap-1">
+                      {loc.cities.map((city) => (
+                        <button
+                          key={city}
+                          onClick={() => handleSelectCity(city)}
+                          className={`px-2 py-1 text-xs rounded-md transition-colors ${
+                            selectedCity.toLowerCase().includes(city.toLowerCase())
+                              ? 'bg-primary text-primary-foreground'
+                              : 'bg-muted hover:bg-muted/80 text-foreground'
+                          }`}
+                        >
+                          {city}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
           <div className="flex items-baseline gap-1 mt-1">
             <span className="text-5xl font-bold text-foreground">{weather.temperature}</span>
             <span className="text-2xl text-muted-foreground">°C</span>
@@ -218,15 +298,16 @@ export const WeatherWidget = ({ destination = 'Da Nang, Vietnam' }: WeatherWidge
         })}
       </div>
       
-      {/* AccuWeather Link */}
+      {/* Global Weather Search Link */}
       <div className="mt-3 pt-3 border-t border-border/30">
         <a 
-          href={accuWeatherInfo.url}
+          href={weatherInfo.url}
           target="_blank"
           rel="noopener noreferrer"
           className="flex items-center justify-center gap-2 text-xs text-muted-foreground hover:text-primary transition-colors"
         >
-          <span>在 AccuWeather 查看 {accuWeatherInfo.locationName} 詳細天氣</span>
+          <Globe className="w-3 h-3" />
+          <span>在 {weatherInfo.provider} 查看 {selectedCity} 詳細天氣</span>
           <ExternalLink className="w-3 h-3" />
         </a>
       </div>

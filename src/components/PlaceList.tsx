@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, MapPin, Heart, Trash2, Check, ExternalLink, Search, X, Star, Navigation, Edit2 } from 'lucide-react';
+import { Plus, MapPin, Heart, Trash2, Check, ExternalLink, Search, X, Star, Navigation, Edit2, GripVertical, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import type { Place, PlaceCategory } from '@/types/travel';
 import { useDebounce } from '@/hooks/useDebounce';
 
@@ -29,14 +30,22 @@ const categoryColors: Record<PlaceCategory, string> = {
   other: 'bg-muted text-muted-foreground'
 };
 
+interface TripDay {
+  day: number;
+  date: string;
+  label: string;
+}
+
 interface PlaceListProps {
   places: Place[];
   onAdd: (place: Omit<Place, 'id' | 'createdAt'>) => void;
   onUpdate: (id: string, updates: Partial<Place>) => void;
   onDelete: (id: string) => void;
+  tripDays?: TripDay[];
+  onMoveToDay?: (placeId: string, date: string) => void;
 }
 
-export const PlaceList = ({ places, onAdd, onUpdate, onDelete }: PlaceListProps) => {
+export const PlaceList = ({ places, onAdd, onUpdate, onDelete, tripDays, onMoveToDay }: PlaceListProps) => {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [editingPlace, setEditingPlace] = useState<Place | null>(null);
   const [newPlace, setNewPlace] = useState({
@@ -201,6 +210,48 @@ export const PlaceList = ({ places, onAdd, onUpdate, onDelete }: PlaceListProps)
               </div>
               
               <div className="flex items-center gap-1">
+                {/* Day Move Button */}
+                {tripDays && onMoveToDay && (
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        title="移動到其他天"
+                      >
+                        <Calendar className="w-4 h-4 text-muted-foreground" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-48 p-2" align="end">
+                      <p className="text-xs font-medium text-muted-foreground mb-2">移動到：</p>
+                      <div className="space-y-1">
+                        {tripDays.map((day) => (
+                          <button
+                            key={day.date}
+                            onClick={() => onMoveToDay(place.id, day.date)}
+                            className={`w-full text-left px-2 py-1.5 text-sm rounded-md transition-colors ${
+                              place.scheduledDate === day.date
+                                ? 'bg-primary text-primary-foreground'
+                                : 'hover:bg-muted'
+                            }`}
+                          >
+                            Day {day.day} - {day.label}
+                          </button>
+                        ))}
+                        <button
+                          onClick={() => onMoveToDay(place.id, '')}
+                          className={`w-full text-left px-2 py-1.5 text-sm rounded-md transition-colors ${
+                            !place.scheduledDate
+                              ? 'bg-secondary text-secondary-foreground'
+                              : 'hover:bg-muted'
+                          }`}
+                        >
+                          未排期
+                        </button>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                )}
                 <Button
                   variant="ghost"
                   size="icon"
