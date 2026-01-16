@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { ArrowRightLeft, Mic, Camera, Copy, Volume2, Check } from 'lucide-react';
+import { ArrowRightLeft, Mic, Camera, Copy, Volume2, Check, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 const languages = [
   { code: 'zh-TW', name: '繁體中文', flag: '🇹🇼' },
@@ -38,17 +39,38 @@ export const TranslationPage = () => {
   const [translatedText, setTranslatedText] = useState('');
   const [isListening, setIsListening] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [isTranslating, setIsTranslating] = useState(false);
 
-  const handleTranslate = () => {
+  const handleTranslate = async () => {
     if (!sourceText.trim()) return;
     
-    // Demo translation - in real app would use translation API
-    const phrasebook = phrases[sourceLang];
-    if (phrasebook && phrasebook[sourceText.trim()]) {
-      setTranslatedText(phrasebook[sourceText.trim()]);
-    } else {
-      // Fallback demo response
-      setTranslatedText(`[翻譯] ${sourceText}`);
+    setIsTranslating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('translate', {
+        body: {
+          text: sourceText.trim(),
+          sourceLang,
+          targetLang,
+        },
+      });
+
+      if (error) throw error;
+      
+      if (data?.translatedText) {
+        setTranslatedText(data.translatedText);
+      } else {
+        throw new Error('No translation returned');
+      }
+    } catch (error) {
+      console.error('Translation error:', error);
+      toast.error('翻譯失敗，請稍後再試');
+      // Fallback to phrasebook
+      const phrasebook = phrases[sourceLang];
+      if (phrasebook && phrasebook[sourceText.trim()]) {
+        setTranslatedText(phrasebook[sourceText.trim()]);
+      }
+    } finally {
+      setIsTranslating(false);
     }
   };
 
@@ -211,10 +233,17 @@ export const TranslationPage = () => {
           <div className="flex justify-end mt-2">
             <Button 
               onClick={handleTranslate}
-              disabled={!sourceText.trim()}
+              disabled={!sourceText.trim() || isTranslating}
               className="bg-gradient-tropical hover:opacity-90"
             >
-              翻譯
+              {isTranslating ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  翻譯中...
+                </>
+              ) : (
+                '翻譯'
+              )}
             </Button>
           </div>
         </div>
