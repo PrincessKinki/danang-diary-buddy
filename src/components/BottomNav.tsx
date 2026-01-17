@@ -1,12 +1,12 @@
-import { Home, MapPin, Receipt, ShoppingBag, Languages } from 'lucide-react';
+import { Home, MapPin, Receipt, ShoppingBag, Languages, Cloud } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 const navItems = [
   { path: '/', icon: Home, label: '首頁' },
   { path: '/itinerary', icon: MapPin, label: '行程' },
   { path: '/expenses', icon: Receipt, label: '記帳' },
-  { path: '/shopping', icon: ShoppingBag, label: '購物' },
   { path: '/translate', icon: Languages, label: '翻譯' },
+  { path: '/weather', icon: Cloud, label: '天氣' },
 ];
 
 export const BottomNav = () => {
