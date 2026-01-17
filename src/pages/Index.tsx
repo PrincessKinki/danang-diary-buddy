@@ -1,41 +1,120 @@
 import { useState, useEffect } from 'react';
 import { Settings } from 'lucide-react';
 import { QubyMascot } from '@/components/QubyMascot';
-import { WeatherWidget } from '@/components/WeatherWidget';
+import { NewsWidget } from '@/components/NewsWidget';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { getTripInfo, saveTripInfo, getPlaces, getExpenses } from '@/lib/storage';
 import type { TripInfo } from '@/types/travel';
 
-// Background images for different destinations
-const destinationBackgrounds: Record<string, string> = {
-  'da nang': 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800&h=600&fit=crop',
-  'vietnam': 'https://images.unsplash.com/photo-1557750255-c76072a7aad1?w=800&h=600&fit=crop',
-  'hanoi': 'https://images.unsplash.com/photo-1509030450996-dd1a26dda07a?w=800&h=600&fit=crop',
-  'ho chi minh': 'https://images.unsplash.com/photo-1583417319070-4a69db38a482?w=800&h=600&fit=crop',
-  'japan': 'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?w=800&h=600&fit=crop',
-  'tokyo': 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=800&h=600&fit=crop',
-  'korea': 'https://images.unsplash.com/photo-1517154421773-0529f29ea451?w=800&h=600&fit=crop',
-  'seoul': 'https://images.unsplash.com/photo-1534274988757-a28bf1a57c17?w=800&h=600&fit=crop',
-  'thailand': 'https://images.unsplash.com/photo-1528181304800-259b08848526?w=800&h=600&fit=crop',
-  'bangkok': 'https://images.unsplash.com/photo-1508009603885-50cf7c579365?w=800&h=600&fit=crop',
-  'taiwan': 'https://images.unsplash.com/photo-1470004914212-05527e49370b?w=800&h=600&fit=crop',
-  'taipei': 'https://images.unsplash.com/photo-1470004914212-05527e49370b?w=800&h=600&fit=crop',
-  'hong kong': 'https://images.unsplash.com/photo-1506973035872-a4ec16b8e8d9?w=800&h=600&fit=crop',
-  'singapore': 'https://images.unsplash.com/photo-1525625293386-3f8f99389edd?w=800&h=600&fit=crop',
-  'malaysia': 'https://images.unsplash.com/photo-1596422846543-75c6fc197f07?w=800&h=600&fit=crop',
-  'default': 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=800&h=600&fit=crop'
+// Background images for different destinations based on weather conditions
+const destinationBackgrounds: Record<string, Record<string, string>> = {
+  'da nang': {
+    sunny: 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800&h=600&fit=crop',
+    cloudy: 'https://images.unsplash.com/photo-1583417319070-4a69db38a482?w=800&h=600&fit=crop',
+    rainy: 'https://images.unsplash.com/photo-1534274988757-a28bf1a57c17?w=800&h=600&fit=crop',
+    default: 'https://images.unsplash.com/photo-1559592413-7cec4d0cae2b?w=800&h=600&fit=crop',
+  },
+  'vietnam': {
+    sunny: 'https://images.unsplash.com/photo-1557750255-c76072a7aad1?w=800&h=600&fit=crop',
+    cloudy: 'https://images.unsplash.com/photo-1583417319070-4a69db38a482?w=800&h=600&fit=crop',
+    rainy: 'https://images.unsplash.com/photo-1534274988757-a28bf1a57c17?w=800&h=600&fit=crop',
+    default: 'https://images.unsplash.com/photo-1557750255-c76072a7aad1?w=800&h=600&fit=crop',
+  },
+  'hanoi': {
+    sunny: 'https://images.unsplash.com/photo-1509030450996-dd1a26dda07a?w=800&h=600&fit=crop',
+    cloudy: 'https://images.unsplash.com/photo-1583417319070-4a69db38a482?w=800&h=600&fit=crop',
+    rainy: 'https://images.unsplash.com/photo-1534274988757-a28bf1a57c17?w=800&h=600&fit=crop',
+    default: 'https://images.unsplash.com/photo-1509030450996-dd1a26dda07a?w=800&h=600&fit=crop',
+  },
+  'ho chi minh': {
+    default: 'https://images.unsplash.com/photo-1583417319070-4a69db38a482?w=800&h=600&fit=crop',
+  },
+  'japan': {
+    sunny: 'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?w=800&h=600&fit=crop',
+    cloudy: 'https://images.unsplash.com/photo-1478436127897-769e1b3f0f36?w=800&h=600&fit=crop',
+    rainy: 'https://images.unsplash.com/photo-1515205244153-fce4e5d8bc49?w=800&h=600&fit=crop',
+    default: 'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?w=800&h=600&fit=crop',
+  },
+  'tokyo': {
+    sunny: 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=800&h=600&fit=crop',
+    cloudy: 'https://images.unsplash.com/photo-1503899036084-c55cdd92da26?w=800&h=600&fit=crop',
+    rainy: 'https://images.unsplash.com/photo-1515205244153-fce4e5d8bc49?w=800&h=600&fit=crop',
+    default: 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=800&h=600&fit=crop',
+  },
+  'korea': {
+    sunny: 'https://images.unsplash.com/photo-1517154421773-0529f29ea451?w=800&h=600&fit=crop',
+    cloudy: 'https://images.unsplash.com/photo-1534274988757-a28bf1a57c17?w=800&h=600&fit=crop',
+    rainy: 'https://images.unsplash.com/photo-1534274988757-a28bf1a57c17?w=800&h=600&fit=crop',
+    default: 'https://images.unsplash.com/photo-1517154421773-0529f29ea451?w=800&h=600&fit=crop',
+  },
+  'seoul': {
+    sunny: 'https://images.unsplash.com/photo-1534274988757-a28bf1a57c17?w=800&h=600&fit=crop',
+    default: 'https://images.unsplash.com/photo-1534274988757-a28bf1a57c17?w=800&h=600&fit=crop',
+  },
+  'thailand': {
+    sunny: 'https://images.unsplash.com/photo-1528181304800-259b08848526?w=800&h=600&fit=crop',
+    default: 'https://images.unsplash.com/photo-1528181304800-259b08848526?w=800&h=600&fit=crop',
+  },
+  'bangkok': {
+    sunny: 'https://images.unsplash.com/photo-1508009603885-50cf7c579365?w=800&h=600&fit=crop',
+    default: 'https://images.unsplash.com/photo-1508009603885-50cf7c579365?w=800&h=600&fit=crop',
+  },
+  'taiwan': {
+    sunny: 'https://images.unsplash.com/photo-1470004914212-05527e49370b?w=800&h=600&fit=crop',
+    default: 'https://images.unsplash.com/photo-1470004914212-05527e49370b?w=800&h=600&fit=crop',
+  },
+  'taipei': {
+    sunny: 'https://images.unsplash.com/photo-1470004914212-05527e49370b?w=800&h=600&fit=crop',
+    default: 'https://images.unsplash.com/photo-1470004914212-05527e49370b?w=800&h=600&fit=crop',
+  },
+  'hong kong': {
+    sunny: 'https://images.unsplash.com/photo-1506973035872-a4ec16b8e8d9?w=800&h=600&fit=crop',
+    default: 'https://images.unsplash.com/photo-1506973035872-a4ec16b8e8d9?w=800&h=600&fit=crop',
+  },
+  'singapore': {
+    sunny: 'https://images.unsplash.com/photo-1525625293386-3f8f99389edd?w=800&h=600&fit=crop',
+    default: 'https://images.unsplash.com/photo-1525625293386-3f8f99389edd?w=800&h=600&fit=crop',
+  },
+  'malaysia': {
+    sunny: 'https://images.unsplash.com/photo-1596422846543-75c6fc197f07?w=800&h=600&fit=crop',
+    default: 'https://images.unsplash.com/photo-1596422846543-75c6fc197f07?w=800&h=600&fit=crop',
+  },
+  'default': {
+    sunny: 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=800&h=600&fit=crop',
+    cloudy: 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=800&h=600&fit=crop',
+    rainy: 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=800&h=600&fit=crop',
+    default: 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=800&h=600&fit=crop',
+  }
+};
+
+// Get current weather condition for a destination
+const getWeatherCondition = (destination: string): string => {
+  const lowerDest = destination.toLowerCase();
+  const savedWeather = localStorage.getItem('weather_condition');
+  if (savedWeather) return savedWeather;
+  
+  // Default conditions based on destination
+  if (lowerDest.includes('da nang') || lowerDest.includes('vietnam')) {
+    return 'rainy';
+  }
+  if (lowerDest.includes('thailand') || lowerDest.includes('bangkok')) {
+    return 'sunny';
+  }
+  return 'sunny';
 };
 
 const getBackgroundForDestination = (destination: string): string => {
   const lowerDest = destination.toLowerCase();
-  for (const [key, url] of Object.entries(destinationBackgrounds)) {
+  const weatherCondition = getWeatherCondition(destination);
+  
+  for (const [key, conditions] of Object.entries(destinationBackgrounds)) {
     if (lowerDest.includes(key)) {
-      return url;
+      return conditions[weatherCondition] || conditions['default'] || Object.values(conditions)[0];
     }
   }
-  return destinationBackgrounds['default'];
+  return destinationBackgrounds['default'][weatherCondition] || destinationBackgrounds['default']['default'];
 };
 
 const Index = () => {
@@ -67,7 +146,7 @@ const Index = () => {
         <img 
           src={backgroundUrl}
           alt={tripInfo.destination}
-          className="w-full h-full object-cover"
+          className="w-full h-full object-cover transition-all duration-500"
         />
         <div className="absolute inset-0 bg-gradient-hero" />
         <div className="absolute bottom-4 left-4 right-4">
@@ -98,7 +177,7 @@ const Index = () => {
                       onChange={(e) => setEditData({ ...editData, destination: e.target.value })}
                       placeholder="例如: Da Nang, Vietnam"
                     />
-                    <p className="text-xs text-muted-foreground mt-1">背景圖片會根據目的地自動更換</p>
+                    <p className="text-xs text-muted-foreground mt-1">背景圖片會根據目的地和天氣自動更換</p>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
@@ -129,9 +208,6 @@ const Index = () => {
 
       {/* Content */}
       <div className="px-4 -mt-4 space-y-4 relative z-10">
-        {/* Weather */}
-        <WeatherWidget destination={tripInfo.destination} />
-
         {/* Quick Stats */}
         <div className="grid grid-cols-3 gap-3">
           <div className="bg-card rounded-xl p-4 shadow-card text-center">
@@ -152,6 +228,9 @@ const Index = () => {
             <p className="text-xs text-muted-foreground">支出</p>
           </div>
         </div>
+
+        {/* News Widget */}
+        <NewsWidget destination={tripInfo.destination} />
       </div>
     </div>
   );

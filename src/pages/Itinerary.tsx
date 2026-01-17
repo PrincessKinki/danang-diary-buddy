@@ -1,20 +1,30 @@
 import { useState, useEffect, useMemo } from 'react';
 import { PlaceList } from '@/components/PlaceList';
 import { getPlaces, addPlace, updatePlace, deletePlace, getTripInfo } from '@/lib/storage';
+import { getPlaceTags, addPlaceTag, removePlaceTag } from '@/lib/placeTags';
 import type { Place, TripInfo } from '@/types/travel';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { format, addDays, differenceInDays, parseISO } from 'date-fns';
 import { zhTW } from 'date-fns/locale';
-import { GripVertical, Calendar } from 'lucide-react';
+import { Calendar, Tag, Plus, X, Search } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
 
 const Itinerary = () => {
   const [places, setPlaces] = useState<Place[]>([]);
   const [tripInfo, setTripInfo] = useState<TripInfo>(getTripInfo());
   const [activeDay, setActiveDay] = useState('all');
+  const [tags, setTags] = useState<string[]>(getPlaceTags());
+  const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const [newTagName, setNewTagName] = useState('');
+  const [isAddTagOpen, setIsAddTagOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     setPlaces(getPlaces());
     setTripInfo(getTripInfo());
+    setTags(getPlaceTags());
   }, []);
 
   // Calculate trip days
@@ -53,12 +63,47 @@ const Itinerary = () => {
     handleUpdate(placeId, { scheduledDate: newDate });
   };
 
-  // Filter places by selected day
+  const handleAddTag = () => {
+    if (!newTagName.trim()) return;
+    const updated = addPlaceTag(newTagName.trim());
+    setTags(updated);
+    setNewTagName('');
+    setIsAddTagOpen(false);
+  };
+
+  const handleRemoveTag = (tag: string) => {
+    const updated = removePlaceTag(tag);
+    setTags(updated);
+    if (selectedTag === tag) {
+      setSelectedTag(null);
+    }
+  };
+
+  // Filter places by selected day and tag
   const filteredPlaces = useMemo(() => {
-    if (activeDay === 'all') return places;
-    if (activeDay === 'unscheduled') return places.filter(p => !p.scheduledDate);
-    return places.filter(p => p.scheduledDate === activeDay);
-  }, [places, activeDay]);
+    let result = places;
+    
+    // Filter by day
+    if (activeDay === 'unscheduled') {
+      result = result.filter(p => !p.scheduledDate);
+    } else if (activeDay !== 'all') {
+      result = result.filter(p => p.scheduledDate === activeDay);
+    }
+    
+    // Filter by tag (using notes field as tags storage)
+    if (selectedTag) {
+      result = result.filter(p => p.notes?.includes(`#${selectedTag}`));
+    }
+    
+    // Filter by search query
+    if (searchQuery) {
+      result = result.filter(p => 
+        p.name.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+    
+    return result;
+  }, [places, activeDay, selectedTag, searchQuery]);
 
   // Count places per day
   const placesCountByDay = useMemo(() => {
@@ -81,6 +126,67 @@ const Itinerary = () => {
               {places.length} 個地點 · {places.filter(p => p.completed).length} 已完成
             </p>
           </div>
+        </div>
+      </div>
+
+      {/* Tags Section */}
+      <div className="px-4 py-3 border-b border-border bg-card/50">
+        <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide">
+          <Tag className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+          <button
+            onClick={() => setSelectedTag(null)}
+            className={`px-2 py-1 rounded-full text-xs font-medium transition-colors whitespace-nowrap ${
+              !selectedTag
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-muted text-muted-foreground hover:bg-muted/80'
+            }`}
+          >
+            全部標籤
+          </button>
+          {tags.map((tag) => (
+            <div key={tag} className="relative group flex-shrink-0">
+              <button
+                onClick={() => setSelectedTag(selectedTag === tag ? null : tag)}
+                className={`px-2 py-1 rounded-full text-xs font-medium transition-colors whitespace-nowrap ${
+                  selectedTag === tag
+                    ? 'bg-secondary text-secondary-foreground'
+                    : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                }`}
+              >
+                #{tag}
+              </button>
+              <button
+                onClick={() => handleRemoveTag(tag)}
+                className="absolute -top-1 -right-1 w-4 h-4 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                <X className="w-2.5 h-2.5" />
+              </button>
+            </div>
+          ))}
+          <Dialog open={isAddTagOpen} onOpenChange={setIsAddTagOpen}>
+            <DialogTrigger asChild>
+              <button className="px-2 py-1 rounded-full text-xs font-medium bg-muted/50 text-muted-foreground hover:bg-muted transition-colors flex items-center gap-1 whitespace-nowrap">
+                <Plus className="w-3 h-3" />
+                新增標籤
+              </button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>新增標籤</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <Input
+                  placeholder="輸入標籤名稱..."
+                  value={newTagName}
+                  onChange={(e) => setNewTagName(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleAddTag()}
+                />
+                <Button onClick={handleAddTag} className="w-full" disabled={!newTagName.trim()}>
+                  新增
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
@@ -156,7 +262,8 @@ const Itinerary = () => {
       )}
 
       {/* Content */}
-      <div className="p-4">
+      <div className="p-4 space-y-4">
+        {/* Search at bottom */}
         <PlaceList
           places={filteredPlaces}
           onAdd={handleAdd}
@@ -165,6 +272,19 @@ const Itinerary = () => {
           tripDays={tripDays}
           onMoveToDay={handleMoveToDay}
         />
+        
+        {/* Search Bar at Bottom */}
+        <div className="sticky bottom-20 bg-card rounded-xl shadow-card p-3 border border-border">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="搜尋地點..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+        </div>
       </div>
     </div>
   );

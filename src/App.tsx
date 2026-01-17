@@ -9,6 +9,7 @@ import Itinerary from "./pages/Itinerary";
 import Expenses from "./pages/Expenses";
 import Shopping from "./pages/Shopping";
 import Translate from "./pages/Translate";
+import Weather from "./pages/Weather";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -26,6 +27,7 @@ const App = () => (
             <Route path="/expenses" element={<Expenses />} />
             <Route path="/shopping" element={<Shopping />} />
             <Route path="/translate" element={<Translate />} />
+            <Route path="/weather" element={<Weather />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           <BottomNav />
