@@ -18,9 +18,9 @@ const Weather = () => {
         <p className="text-primary-foreground/80 text-sm">查看當地天氣預報</p>
       </div>
 
-      {/* Content */}
+      {/* Content - Full Page Weather */}
       <div className="p-4">
-        <WeatherWidget destination={tripInfo.destination} />
+        <WeatherWidget destination={tripInfo.destination} fullPage />
       </div>
     </div>
   );
