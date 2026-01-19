@@ -155,85 +155,93 @@ const SortablePlaceCard = ({
           )}
         </div>
         
-        {/* Vertical Action Buttons */}
+        {/* Horizontal 2-Row Action Buttons */}
         <div className="flex flex-col gap-1">
-          {/* Day Move Button */}
-          {tripDays && onMoveToDay && (
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  title="移動到其他天"
-                >
-                  <Calendar className="w-4 h-4 text-muted-foreground" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-48 p-2" align="end">
-                <p className="text-xs font-medium text-muted-foreground mb-2">移動到：</p>
-                <div className="space-y-1">
-                  {tripDays.map((day) => (
+          {/* Row 1 */}
+          <div className="flex gap-1">
+            {/* Day Move Button */}
+            {tripDays && onMoveToDay ? (
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    title="移動到其他天"
+                  >
+                    <Calendar className="w-4 h-4 text-muted-foreground" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-48 p-2" align="end">
+                  <p className="text-xs font-medium text-muted-foreground mb-2">移動到：</p>
+                  <div className="space-y-1">
+                    {tripDays.map((day) => (
+                      <button
+                        key={day.date}
+                        onClick={() => onMoveToDay(place.id, day.date)}
+                        className={`w-full text-left px-2 py-1.5 text-sm rounded-md transition-colors ${
+                          place.scheduledDate === day.date
+                            ? 'bg-primary text-primary-foreground'
+                            : 'hover:bg-muted'
+                        }`}
+                      >
+                        Day {day.day} - {day.label}
+                      </button>
+                    ))}
                     <button
-                      key={day.date}
-                      onClick={() => onMoveToDay(place.id, day.date)}
+                      onClick={() => onMoveToDay(place.id, '')}
                       className={`w-full text-left px-2 py-1.5 text-sm rounded-md transition-colors ${
-                        place.scheduledDate === day.date
-                          ? 'bg-primary text-primary-foreground'
+                        !place.scheduledDate
+                          ? 'bg-secondary text-secondary-foreground'
                           : 'hover:bg-muted'
                       }`}
                     >
-                      Day {day.day} - {day.label}
+                      未排期
                     </button>
-                  ))}
-                  <button
-                    onClick={() => onMoveToDay(place.id, '')}
-                    className={`w-full text-left px-2 py-1.5 text-sm rounded-md transition-colors ${
-                      !place.scheduledDate
-                        ? 'bg-secondary text-secondary-foreground'
-                        : 'hover:bg-muted'
-                    }`}
-                  >
-                    未排期
-                  </button>
-                </div>
-              </PopoverContent>
-            </Popover>
-          )}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            onClick={onEdit}
-            title="編輯地點"
-          >
-            <Edit2 className="w-4 h-4 text-muted-foreground" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            onClick={onFavorite}
-          >
-            <Heart className={`w-4 h-4 ${place.isFavorite ? 'fill-accent text-accent' : ''}`} />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8"
-            onClick={onMapOpen}
-            title="在 Google Maps 開啟"
-          >
-            <MapPin className="w-4 h-4 text-primary" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 text-destructive hover:text-destructive"
-            onClick={onDelete}
-          >
-            <Trash2 className="w-4 h-4" />
-          </Button>
+                  </div>
+                </PopoverContent>
+              </Popover>
+            ) : (
+              <div className="w-8" /> // Placeholder for alignment
+            )}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={onEdit}
+              title="編輯地點"
+            >
+              <Edit2 className="w-4 h-4 text-muted-foreground" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={onFavorite}
+            >
+              <Heart className={`w-4 h-4 ${place.isFavorite ? 'fill-accent text-accent' : ''}`} />
+            </Button>
+          </div>
+          {/* Row 2 */}
+          <div className="flex gap-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={onMapOpen}
+              title="在 Google Maps 開啟"
+            >
+              <MapPin className="w-4 h-4 text-primary" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-destructive hover:text-destructive"
+              onClick={onDelete}
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
+          </div>
         </div>
       </div>
     </div>
