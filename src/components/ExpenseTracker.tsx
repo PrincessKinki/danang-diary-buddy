@@ -1,11 +1,14 @@
 import { useState, useEffect } from 'react';
-import { Plus, Trash2, ArrowRightLeft, DollarSign } from 'lucide-react';
+import { Plus, Trash2, ArrowRightLeft, DollarSign, Edit2, Check, GripVertical, PartyPopper } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import type { Expense, ExpenseCategory } from '@/types/travel';
 import { getCurrencySettings, getTripInfo, type CurrencySettings } from '@/lib/storage';
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 const categoryLabels: Record<ExpenseCategory, string> = {
   food: '🍜 美食',
@@ -69,17 +72,131 @@ const exchangeRates: Record<string, Record<string, number>> = {
   CNY: { HKD: 1.09, VND: 3320, CNY: 1, TWD: 4.5, JPY: 21, KRW: 185, USD: 0.14, THB: 5 },
 };
 
+// Balloon colors for celebration
+const balloonColors = [
+  'hsl(var(--primary))',
+  'hsl(var(--secondary))',
+  'hsl(var(--accent))',
+  'hsl(var(--chart-1))',
+  'hsl(var(--chart-2))',
+  'hsl(var(--chart-3))',
+  'hsl(var(--chart-4))',
+  'hsl(var(--chart-5))',
+];
+
+// Sortable Expense Card
+const SortableExpenseCard = ({
+  expense,
+  onEdit,
+  onDelete,
+  onComplete,
+  formatCurrency,
+  categoryLabels
+}: {
+  expense: Expense & { completed?: boolean };
+  onEdit: () => void;
+  onDelete: () => void;
+  onComplete: () => void;
+  formatCurrency: (amount: number, currency: string) => string;
+  categoryLabels: Record<ExpenseCategory, string>;
+}) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging
+  } = useSortable({ id: expense.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`bg-card rounded-xl p-4 shadow-card ${expense.completed ? 'opacity-60' : ''}`}
+    >
+      <div className="flex items-center gap-3">
+        {/* Drag Handle */}
+        <button
+          {...attributes}
+          {...listeners}
+          className="cursor-grab active:cursor-grabbing p-1 hover:bg-muted rounded"
+        >
+          <GripVertical className="w-4 h-4 text-muted-foreground" />
+        </button>
+
+        {/* Complete Button */}
+        <button
+          onClick={onComplete}
+          className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all ${
+            expense.completed
+              ? 'bg-success border-success'
+              : 'border-muted-foreground hover:border-primary'
+          }`}
+        >
+          {expense.completed && <Check className="w-4 h-4 text-success-foreground" />}
+        </button>
+
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="text-sm">{categoryLabels[expense.category].split(' ')[0]}</span>
+            <span className={`font-medium text-foreground ${expense.completed ? 'line-through' : ''}`}>
+              {expense.description}
+            </span>
+          </div>
+          <span className="text-xs text-muted-foreground">
+            {new Date(expense.date).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })}
+          </span>
+        </div>
+
+        <div className="flex items-center gap-1">
+          <span className="font-semibold text-foreground mr-2">
+            {formatCurrency(expense.amount, expense.currency)}
+          </span>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={onEdit}
+          >
+            <Edit2 className="w-4 h-4 text-muted-foreground" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-destructive hover:text-destructive"
+            onClick={onDelete}
+          >
+            <Trash2 className="w-4 h-4" />
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 interface ExpenseTrackerProps {
   expenses: Expense[];
   onAdd: (expense: Omit<Expense, 'id'>) => void;
   onDelete: (id: string) => void;
+  onUpdate?: (id: string, updates: Partial<Expense>) => void;
+  onReorder?: (expenses: Expense[]) => void;
 }
 
-export const ExpenseTracker = ({ expenses, onAdd, onDelete }: ExpenseTrackerProps) => {
+export const ExpenseTracker = ({ expenses, onAdd, onDelete, onUpdate, onReorder }: ExpenseTrackerProps) => {
   const [isAddOpen, setIsAddOpen] = useState(false);
+  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [currencySettings, setCurrencySettings] = useState<CurrencySettings>(getCurrencySettings());
   const [destinationCurrency, setDestinationCurrency] = useState('VND');
   const [showBubble, setShowBubble] = useState(false);
+  const [showBalloons, setShowBalloons] = useState(false);
+  const [completedExpenses, setCompletedExpenses] = useState<Set<string>>(new Set());
   const [newExpense, setNewExpense] = useState({
     description: '',
     amount: '',
@@ -89,6 +206,18 @@ export const ExpenseTracker = ({ expenses, onAdd, onDelete }: ExpenseTrackerProp
   const [converterAmount, setConverterAmount] = useState('');
   const [converterFrom, setConverterFrom] = useState('HKD');
   const [converterTo, setConverterTo] = useState('VND');
+
+  // DnD sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   useEffect(() => {
     const tripInfo = getTripInfo();
@@ -145,6 +274,42 @@ export const ExpenseTracker = ({ expenses, onAdd, onDelete }: ExpenseTrackerProp
     setTimeout(() => setShowBubble(false), 1500);
   };
 
+  const handleEditSave = () => {
+    if (!editingExpense || !onUpdate) return;
+    onUpdate(editingExpense.id, {
+      description: editingExpense.description,
+      amount: editingExpense.amount,
+      currency: editingExpense.currency,
+      category: editingExpense.category
+    });
+    setEditingExpense(null);
+  };
+
+  const handleComplete = (expenseId: string) => {
+    const newCompleted = new Set(completedExpenses);
+    if (newCompleted.has(expenseId)) {
+      newCompleted.delete(expenseId);
+    } else {
+      newCompleted.add(expenseId);
+      // Show balloon celebration
+      setShowBalloons(true);
+      setTimeout(() => setShowBalloons(false), 3000);
+    }
+    setCompletedExpenses(newCompleted);
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    
+    if (over && active.id !== over.id && onReorder) {
+      const oldIndex = expenses.findIndex(e => e.id === active.id);
+      const newIndex = expenses.findIndex(e => e.id === over.id);
+      
+      const newOrder = arrayMove(expenses, oldIndex, newIndex);
+      onReorder(newOrder);
+    }
+  };
+
   const totalInBase = expenses.reduce((sum, exp) => {
     return sum + convert(exp.amount, exp.currency, currencySettings.baseCurrency);
   }, 0);
@@ -183,6 +348,39 @@ export const ExpenseTracker = ({ expenses, onAdd, onDelete }: ExpenseTrackerProp
         <div className="fixed inset-0 pointer-events-none z-50 flex items-center justify-center">
           <div className="animate-bounce bg-success text-success-foreground rounded-full p-6 shadow-lg">
             <DollarSign className="w-12 h-12" />
+          </div>
+        </div>
+      )}
+
+      {/* Balloon Celebration Animation */}
+      {showBalloons && (
+        <div className="fixed inset-0 pointer-events-none z-50 overflow-hidden">
+          {Array.from({ length: 20 }).map((_, i) => (
+            <div
+              key={i}
+              className="absolute animate-float-up"
+              style={{
+                left: `${Math.random() * 100}%`,
+                bottom: '-50px',
+                animationDelay: `${Math.random() * 1}s`,
+                animationDuration: `${2 + Math.random() * 2}s`,
+              }}
+            >
+              <div
+                className="w-8 h-10 rounded-full shadow-lg"
+                style={{
+                  backgroundColor: balloonColors[Math.floor(Math.random() * balloonColors.length)],
+                }}
+              />
+              <div
+                className="w-0.5 h-8 mx-auto"
+                style={{ backgroundColor: 'hsl(var(--muted-foreground))' }}
+              />
+            </div>
+          ))}
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-2 bg-card/90 px-6 py-4 rounded-2xl shadow-lg">
+            <PartyPopper className="w-8 h-8 text-secondary" />
+            <span className="text-xl font-bold text-foreground">完成！</span>
           </div>
         </div>
       )}
@@ -253,7 +451,7 @@ export const ExpenseTracker = ({ expenses, onAdd, onDelete }: ExpenseTrackerProp
         </div>
       </div>
 
-      {/* Expense List - Grouped by Date */}
+      {/* Expense List - Grouped by Date with DnD */}
       <div className="space-y-4">
         {sortedDates.map((date) => (
           <div key={date} className="space-y-2">
@@ -265,35 +463,31 @@ export const ExpenseTracker = ({ expenses, onAdd, onDelete }: ExpenseTrackerProp
               </span>
             </div>
             
-            {/* Day's Expenses */}
-            {expensesByDate[date].map((expense) => (
-              <div key={expense.id} className="bg-card rounded-xl p-4 shadow-card">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm">{categoryLabels[expense.category].split(' ')[0]}</span>
-                      <span className="font-medium text-foreground">{expense.description}</span>
-                    </div>
-                    <span className="text-xs text-muted-foreground">
-                      {new Date(expense.date).toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' })}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-semibold text-foreground">
-                      {formatCurrency(expense.amount, expense.currency)}
-                    </span>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => onDelete(expense.id)}
-                      className="text-destructive hover:text-destructive"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
+            {/* Day's Expenses with DnD */}
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext
+                items={expensesByDate[date].map(e => e.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                <div className="space-y-2">
+                  {expensesByDate[date].map((expense) => (
+                    <SortableExpenseCard
+                      key={expense.id}
+                      expense={{ ...expense, completed: completedExpenses.has(expense.id) }}
+                      onEdit={() => setEditingExpense(expense)}
+                      onDelete={() => onDelete(expense.id)}
+                      onComplete={() => handleComplete(expense.id)}
+                      formatCurrency={formatCurrency}
+                      categoryLabels={categoryLabels}
+                    />
+                  ))}
                 </div>
-              </div>
-            ))}
+              </SortableContext>
+            </DndContext>
           </div>
         ))}
         
@@ -304,6 +498,79 @@ export const ExpenseTracker = ({ expenses, onAdd, onDelete }: ExpenseTrackerProp
           </div>
         )}
       </div>
+
+      {/* Edit Expense Dialog */}
+      <Dialog open={!!editingExpense} onOpenChange={(open) => !open && setEditingExpense(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>編輯支出</DialogTitle>
+          </DialogHeader>
+          {editingExpense && (
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium mb-1.5 block">描述</label>
+                <Input
+                  value={editingExpense.description}
+                  onChange={(e) => setEditingExpense({ ...editingExpense, description: e.target.value })}
+                />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-sm font-medium mb-1.5 block">貨幣</label>
+                  <Select 
+                    value={editingExpense.currency} 
+                    onValueChange={(v) => setEditingExpense({ ...editingExpense, currency: v })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {currencies.map(c => (
+                        <SelectItem key={c.code} value={c.code}>{c.name} ({c.code})</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-1.5 block">金額</label>
+                  <Input
+                    type="number"
+                    inputMode="decimal"
+                    value={editingExpense.amount}
+                    onChange={(e) => setEditingExpense({ ...editingExpense, amount: parseFloat(e.target.value) || 0 })}
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <label className="text-sm font-medium mb-2 block">分類</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {Object.entries(categoryLabels).map(([key, label]) => (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => setEditingExpense({ ...editingExpense, category: key as ExpenseCategory })}
+                      className={`p-3 rounded-xl text-center transition-all ${
+                        editingExpense.category === key 
+                          ? 'bg-primary text-primary-foreground shadow-md scale-105' 
+                          : 'bg-muted hover:bg-muted/80'
+                      }`}
+                    >
+                      <span className="text-xl block">{label.split(' ')[0]}</span>
+                      <span className="text-xs">{label.split(' ')[1]}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              
+              <Button onClick={handleEditSave} className="w-full">
+                儲存變更
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Add Button */}
       <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
@@ -385,6 +652,23 @@ export const ExpenseTracker = ({ expenses, onAdd, onDelete }: ExpenseTrackerProp
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Add CSS for balloon animation */}
+      <style>{`
+        @keyframes float-up {
+          0% {
+            transform: translateY(0) rotate(0deg);
+            opacity: 1;
+          }
+          100% {
+            transform: translateY(-100vh) rotate(360deg);
+            opacity: 0;
+          }
+        }
+        .animate-float-up {
+          animation: float-up linear forwards;
+        }
+      `}</style>
     </div>
   );
 };

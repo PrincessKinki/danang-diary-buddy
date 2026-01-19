@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { ExpenseTracker } from '@/components/ExpenseTracker';
-import { getExpenses, addExpense, deleteExpense } from '@/lib/storage';
+import { getExpenses, addExpense, deleteExpense, saveExpenses } from '@/lib/storage';
 import type { Expense } from '@/types/travel';
 import { QubyMascot } from '@/components/QubyMascot';
 
@@ -19,6 +19,19 @@ const Expenses = () => {
   const handleDelete = (id: string) => {
     const updatedExpenses = deleteExpense(id);
     setExpenses(updatedExpenses);
+  };
+
+  const handleUpdate = (id: string, updates: Partial<Expense>) => {
+    const updated = expenses.map(e => 
+      e.id === id ? { ...e, ...updates } : e
+    );
+    setExpenses(updated);
+    saveExpenses(updated);
+  };
+
+  const handleReorder = (reorderedExpenses: Expense[]) => {
+    setExpenses(reorderedExpenses);
+    saveExpenses(reorderedExpenses);
   };
 
   return (
@@ -42,6 +55,8 @@ const Expenses = () => {
           expenses={expenses}
           onAdd={handleAdd}
           onDelete={handleDelete}
+          onUpdate={handleUpdate}
+          onReorder={handleReorder}
         />
       </div>
     </div>
