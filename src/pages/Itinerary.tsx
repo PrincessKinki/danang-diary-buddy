@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { PlaceList } from '@/components/PlaceList';
-import { getPlaces, addPlace, updatePlace, deletePlace, getTripInfo } from '@/lib/storage';
+import { getPlaces, addPlace, updatePlace, deletePlace, getTripInfo, savePlaces } from '@/lib/storage';
 import { getPlaceTags, addPlaceTag, removePlaceTag } from '@/lib/placeTags';
 import type { Place, TripInfo } from '@/types/travel';
 import { format, addDays, differenceInDays, parseISO } from 'date-fns';
@@ -61,6 +61,11 @@ const Itinerary = () => {
   // Move place between days
   const handleMoveToDay = (placeId: string, newDate: string) => {
     handleUpdate(placeId, { scheduledDate: newDate });
+  };
+
+  const handleReorder = (reorderedPlaces: Place[]) => {
+    setPlaces(reorderedPlaces);
+    savePlaces(reorderedPlaces);
   };
 
   const handleAddTag = () => {
@@ -271,6 +276,7 @@ const Itinerary = () => {
           onDelete={handleDelete}
           tripDays={tripDays}
           onMoveToDay={handleMoveToDay}
+          onReorder={handleReorder}
         />
         
         {/* Search Bar at Bottom */}
