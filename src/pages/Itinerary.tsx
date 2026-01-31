@@ -5,13 +5,12 @@ import { getPlaceTags, addPlaceTag, removePlaceTag } from '@/lib/placeTags';
 import type { Place, TripInfo } from '@/types/travel';
 import { format, addDays, differenceInDays, parseISO } from 'date-fns';
 import { zhTW } from 'date-fns/locale';
-import { Calendar, Tag, Plus, X, Search } from 'lucide-react';
+import { Calendar, Tag, Plus, X, Search, Share2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import ShareTripButton from '@/components/ShareTripButton';
-
+<ShareTripButton
 const Itinerary = () => {
   const [places, setPlaces] = useState<Place[]>([]);
   const [tripInfo, setTripInfo] = useState<TripInfo>(getTripInfo());
@@ -132,12 +131,12 @@ const Itinerary = () => {
               {places.length} 個地點 · {places.filter(p => p.completed).length} 已完成
             </p>
           </div>
-                    <ShareTripButton />
         </div>
       </div>
 
-      {/* Tags Section */}
-      <div className="px-4 py-3 border-b border-border bg-card/50">
+          <Button variant="ghost" size="sm" className="text-primary-foreground">
+            <Share2 className="w-5 h-5" />
+          </Button>      <div className="px-4 py-3 border-b border-border bg-card/50">
         <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide">
           <Tag className="w-4 h-4 text-muted-foreground flex-shrink-0" />
           <button
