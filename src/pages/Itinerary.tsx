@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
+import ShareTripButton from '@/components/ShareTripButton';
 
 const Itinerary = () => {
   const [places, setPlaces] = useState<Place[]>([]);
@@ -131,6 +132,7 @@ const Itinerary = () => {
               {places.length} 個地點 · {places.filter(p => p.completed).length} 已完成
             </p>
           </div>
+                    <ShareTripButton />
         </div>
       </div>
 
