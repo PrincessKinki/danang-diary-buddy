@@ -1,5 +1,9 @@
 import { Place, Expense, ShoppingItem, TripInfo } from '@/types/travel';
 
+
+
+// API base URL for Netlify functions
+const API_BASE = '/.netlify/functions';
 const STORAGE_KEYS = {
   TRIP_INFO: 'danang_trip_info',
   PLACES: 'danang_places',
@@ -149,4 +153,63 @@ export const getCurrencySettings = (): CurrencySettings => {
 
 export const saveCurrencySettings = (settings: CurrencySettings) => {
   localStorage.setItem(STORAGE_KEYS.CURRENCY_SETTINGS, JSON.stringify(settings));
+};
+
+
+// Trip API functions
+export const createTrip = async (tripInfo: TripInfo, places: Place[]) => {
+  try {
+    const response = await fetch(`${API_BASE}/create-trip`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        destination: tripInfo.destination,
+        startDate: tripInfo.startDate,
+        endDate: tripInfo.endDate,
+        places: places
+      })
+    });
+    const data = await response.json();
+    return data.tripId;
+  } catch (error) {
+    console.error('Failed to create trip:', error);
+    throw error;
+  }
+};
+
+export const getTrip = async (tripId: string) => {
+  try {
+    const response = await fetch(`${API_BASE}/get-trip?id=${tripId}`);
+    if (!response.ok) throw new Error('Trip not found');
+    return await response.json();
+  } catch (error) {
+    console.error('Failed to get trip:', error);
+    throw error;
+  }
+};
+
+export const updateTrip = async (tripId: string, updates: { places?: Place[], expenses?: Expense[], itinerary?: any }) => {
+  try {
+    const response = await fetch(`${API_BASE}/update-trip`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: tripId, ...updates })
+    });
+    if (!response.ok) throw new Error('Failed to update trip');
+    return await response.json();
+  } catch (error) {
+    console.error('Failed to update trip:', error);
+    throw error;
+  }
+};
+
+export const getTripIdFromURL = (): string | null => {
+  const params = new URLSearchParams(window.location.search);
+  return params.get('trip');
+};
+
+export const setTripIdToURL = (tripId: string) => {
+  const url = new URL(window.location.href);
+  url.searchParams.set('trip', tripId);
+  window.history.pushState({}, '', url.toString());
 };
