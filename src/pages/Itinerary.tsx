@@ -133,7 +133,7 @@ const Itinerary = () => {
         </div>
       </div>
 
-          <Button variant="ghost" size="sm" className="text-primary-foreground">
+          <Button variant="ghost" size="sm" className="bg-yellow-400 text-black hover:bg-yellow-500">
             <Share2 className="w-5 h-5" />
           </Button>      <div className="px-4 py-3 border-b border-border bg-card/50">
         <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide">
