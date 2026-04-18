@@ -136,10 +136,11 @@ const Itinerary = () => {
               {places.length} 個地點 · {places.filter(p => p.completed).length} 已完成
             </p>
           </div>
+          <ShareTripButton />
         </div>
       </div>
 
-      <ShareTripButton />
+
       <div className="px-4 py-3 border-b border-border bg-card/50">
         <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide">
           <Tag className="w-4 h-4 text-muted-foreground flex-shrink-0" />
