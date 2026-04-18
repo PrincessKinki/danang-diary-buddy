@@ -8,7 +8,10 @@ const Expenses = () => {
   const [expenses, setExpenses] = useState<Expense[]>([]);
 
   useEffect(() => {
-    setExpenses(getExpenses());
+    const load = () => setExpenses(getExpenses());
+    load();
+    window.addEventListener('trip-hydrated', load);
+    return () => window.removeEventListener('trip-hydrated', load);
   }, []);
 
   const handleAdd = (expense: Omit<Expense, 'id'>) => {
