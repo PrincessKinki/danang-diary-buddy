@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { BottomNav } from "@/components/BottomNav";
 import { useSharedTrip } from "@/hooks/useSharedTrip";
+import PresenceIndicator from "@/components/PresenceIndicator";
 import { toast } from "sonner";
 import { useEffect } from "react";
 import Index from "./pages/Index";
@@ -34,6 +35,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <SharedTripBootstrap />
+        <PresenceIndicator />
         <div className="min-h-screen bg-background">
           <Routes>
             <Route path="/" element={<Index />} />
