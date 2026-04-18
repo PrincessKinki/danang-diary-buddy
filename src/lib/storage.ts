@@ -26,8 +26,15 @@ export const getTripInfo = (): TripInfo => {
   };
 };
 
+const emitLocalChange = () => {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('local-trip-changed'));
+  }
+};
+
 export const saveTripInfo = (info: TripInfo) => {
   localStorage.setItem(STORAGE_KEYS.TRIP_INFO, JSON.stringify(info));
+  emitLocalChange();
 };
 
 // Places
@@ -38,6 +45,7 @@ export const getPlaces = (): Place[] => {
 
 export const savePlaces = (places: Place[]) => {
   localStorage.setItem(STORAGE_KEYS.PLACES, JSON.stringify(places));
+  emitLocalChange();
 };
 
 export const addPlace = (place: Omit<Place, 'id' | 'createdAt'>) => {
@@ -76,6 +84,7 @@ export const getExpenses = (): Expense[] => {
 
 export const saveExpenses = (expenses: Expense[]) => {
   localStorage.setItem(STORAGE_KEYS.EXPENSES, JSON.stringify(expenses));
+  emitLocalChange();
 };
 
 export const addExpense = (expense: Omit<Expense, 'id'>) => {
@@ -103,6 +112,7 @@ export const getShoppingItems = (): ShoppingItem[] => {
 
 export const saveShoppingItems = (items: ShoppingItem[]) => {
   localStorage.setItem(STORAGE_KEYS.SHOPPING, JSON.stringify(items));
+  emitLocalChange();
 };
 
 export const addShoppingItem = (item: Omit<ShoppingItem, 'id'>) => {
@@ -212,6 +222,7 @@ export const setTripIdToURL = (tripId: string) => {
   const url = new URL(window.location.href);
   url.searchParams.set('trip', tripId);
   window.history.pushState({}, '', url.toString());
+  window.dispatchEvent(new Event('trip-id-changed'));
 };
 
 // Hydrate localStorage from a remote shared trip
