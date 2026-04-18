@@ -1,9 +1,6 @@
 import { Place, Expense, ShoppingItem, TripInfo } from '@/types/travel';
+import { supabase } from '@/integrations/supabase/client';
 
-
-
-// API base URL for Netlify functions
-const API_BASE = '/.netlify/functions';
 const STORAGE_KEYS = {
   TRIP_INFO: 'danang_trip_info',
   PLACES: 'danang_places',
@@ -156,51 +153,54 @@ export const saveCurrencySettings = (settings: CurrencySettings) => {
 };
 
 
-// Trip API functions
-export const createTrip = async (tripInfo: TripInfo, places: Place[]) => {
-  try {
-    const response = await fetch(`${API_BASE}/create-trip`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        destination: tripInfo.destination,
-        startDate: tripInfo.startDate,
-        endDate: tripInfo.endDate,
-        places: places
-      })
-    });
-    const data = await response.json();
-    return data.tripId;
-  } catch (error) {
-    console.error('Failed to create trip:', error);
-    throw error;
-  }
+// ============= Shared Trip (Supabase) =============
+export const createTrip = async (tripInfo: TripInfo, places: Place[]): Promise<string> => {
+  const expenses = getExpenses();
+  const shopping = getShoppingItems();
+  const { data, error } = await supabase
+    .from('trips')
+    .insert({
+      destination: tripInfo.destination,
+      start_date: tripInfo.startDate,
+      end_date: tripInfo.endDate,
+      accommodation: tripInfo.accommodation as any,
+      places: places as any,
+      expenses: expenses as any,
+      shopping: shopping as any,
+    })
+    .select('id')
+    .single();
+  if (error) throw error;
+  return data.id;
 };
 
 export const getTrip = async (tripId: string) => {
-  try {
-    const response = await fetch(`${API_BASE}/get-trip?id=${tripId}`);
-    if (!response.ok) throw new Error('Trip not found');
-    return await response.json();
-  } catch (error) {
-    console.error('Failed to get trip:', error);
-    throw error;
-  }
+  const { data, error } = await supabase
+    .from('trips')
+    .select('*')
+    .eq('id', tripId)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
 };
 
-export const updateTrip = async (tripId: string, updates: { places?: Place[], expenses?: Expense[], itinerary?: any }) => {
-  try {
-    const response = await fetch(`${API_BASE}/update-trip`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: tripId, ...updates })
-    });
-    if (!response.ok) throw new Error('Failed to update trip');
-    return await response.json();
-  } catch (error) {
-    console.error('Failed to update trip:', error);
-    throw error;
+export const updateTrip = async (
+  tripId: string,
+  updates: { tripInfo?: TripInfo; places?: Place[]; expenses?: Expense[]; shopping?: ShoppingItem[] }
+) => {
+  const payload: Record<string, any> = {};
+  if (updates.tripInfo) {
+    payload.destination = updates.tripInfo.destination;
+    payload.start_date = updates.tripInfo.startDate;
+    payload.end_date = updates.tripInfo.endDate;
+    payload.accommodation = updates.tripInfo.accommodation;
   }
+  if (updates.places !== undefined) payload.places = updates.places;
+  if (updates.expenses !== undefined) payload.expenses = updates.expenses;
+  if (updates.shopping !== undefined) payload.shopping = updates.shopping;
+
+  const { error } = await supabase.from('trips').update(payload).eq('id', tripId);
+  if (error) throw error;
 };
 
 export const getTripIdFromURL = (): string | null => {
@@ -212,4 +212,36 @@ export const setTripIdToURL = (tripId: string) => {
   const url = new URL(window.location.href);
   url.searchParams.set('trip', tripId);
   window.history.pushState({}, '', url.toString());
+};
+
+// Hydrate localStorage from a remote shared trip
+export const hydrateFromTrip = (trip: any) => {
+  if (!trip) return;
+  const tripInfo: TripInfo = {
+    destination: trip.destination ?? '',
+    startDate: trip.start_date ?? new Date().toISOString().split('T')[0],
+    endDate: trip.end_date ?? new Date().toISOString().split('T')[0],
+    accommodation: trip.accommodation ?? { name: '', address: '', googleMapsUrl: '' },
+  };
+  saveTripInfo(tripInfo);
+  savePlaces(trip.places ?? []);
+  saveExpenses(trip.expenses ?? []);
+  saveShoppingItems(trip.shopping ?? []);
+};
+
+// Subscribe to realtime updates for a shared trip
+export const subscribeToTrip = (tripId: string, onChange: (trip: any) => void) => {
+  const channel = supabase
+    .channel(`trip-${tripId}`)
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'trips', filter: `id=eq.${tripId}` },
+      (payload) => {
+        if (payload.new) onChange(payload.new);
+      }
+    )
+    .subscribe();
+  return () => {
+    supabase.removeChannel(channel);
+  };
 };
