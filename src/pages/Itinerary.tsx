@@ -21,9 +21,14 @@ const Itinerary = () => {
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
-    setPlaces(getPlaces());
-    setTripInfo(getTripInfo());
-    setTags(getPlaceTags());
+    const load = () => {
+      setPlaces(getPlaces());
+      setTripInfo(getTripInfo());
+      setTags(getPlaceTags());
+    };
+    load();
+    window.addEventListener('trip-hydrated', load);
+    return () => window.removeEventListener('trip-hydrated', load);
   }, []);
 
   // Calculate trip days
